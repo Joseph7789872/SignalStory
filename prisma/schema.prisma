@@ -1,0 +1,250 @@
+// SignalStory — V1 data model
+// Agent outputs are stored as JSON columns whose shape is owned by the Zod
+// schemas in lib/agents/schemas.ts. Relational tables are used for entities
+// that are queried/filtered.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Supabase: pooled connection (port 6543, ?pgbouncer=true) for the app runtime.
+  url       = env("DATABASE_URL")
+  // Direct connection (port 5432) for migrations / db:push.
+  directUrl = env("DIRECT_URL")
+}
+
+// --- Identity / tenancy ---
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  profile   OrganizationProfile?
+  founder   FounderProfile?
+  brandVoice BrandVoice?
+  editorial EditorialStrategy?
+  customerVoice CustomerVoiceEntry[]
+  signals   Signal[]
+}
+
+enum Role {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id         String   @id @default(cuid())
+  authUserId String   @unique // Supabase auth user id
+  email      String   @unique
+  name      String?
+  role      Role     @default(OWNER)
+  orgId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  signals   Signal[]
+  feedback  Feedback[]
+
+  @@index([orgId])
+}
+
+// --- Context layer (the moat) ---
+
+model OrganizationProfile {
+  id          String   @id @default(cuid())
+  orgId       String   @unique
+  description String   @default("")
+  icp         String   @default("")
+  category    String   @default("")
+  positioning Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model FounderProfile {
+  id             String   @id @default(cuid())
+  orgId          String   @unique
+  name           String   @default("")
+  beliefs        Json     @default("[]") // string[]
+  frameworks     Json     @default("[]") // { name, summary }[]
+  lessons        Json     @default("[]") // string[]
+  writingSamples Json     @default("[]") // { label, text }[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model BrandVoice {
+  id              String   @id @default(cuid())
+  orgId           String   @unique
+  tone            String   @default("")
+  sentenceStyle   String   @default("")
+  bannedPhrases   String[] @default([])
+  vocabulary      Json     @default("{}") // { prefer: string[], avoid: string[] }
+  opinionatedness String   @default("")
+  technicalDepth  String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model EditorialStrategy {
+  id            String   @id @default(cuid())
+  orgId         String   @unique
+  pillars       Json     @default("[]") // { name, description }[]
+  audiences     Json     @default("[]") // { name, description }[]
+  goals         String[] @default([])
+  topicsToAvoid String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// Schema defined now; populated in Phase 2.
+model CustomerVoiceEntry {
+  id        String   @id @default(cuid())
+  orgId     String
+  kind      String // discovery_call | objection | testimonial | review | churn | support
+  text      String
+  source    String   @default("")
+  createdAt DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+// --- Pipeline ---
+
+enum SignalSource {
+  MANUAL
+}
+
+enum SignalStatus {
+  QUEUED
+  NORMALIZING
+  SCORING
+  STORY
+  NARRATIVE
+  CHANNEL
+  EDITING
+  READY
+  REJECTED
+  FAILED
+}
+
+model Signal {
+  id               String       @id @default(cuid())
+  orgId            String
+  userId           String
+  source           SignalSource @default(MANUAL)
+  rawInput         Json // { title, description, evidence, links[], metadata }
+  evidencePacket   Json? // [1] normalizer output
+  status           SignalStatus @default(QUEUED)
+  statusReason     String? // why rejected/failed/not-worth-publishing
+  significanceScore Int? // [2]
+  scoreDetail      Json? // [2] full SignalScore
+  storyAngles      Json? // [3] StoryAngles
+  narrativeBrief   Json? // [4] NarrativeBrief
+  costUsd          Float        @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets   ContentAsset[]
+  runs     AgentRun[]
+  feedback Feedback[]
+
+  @@index([orgId, status])
+  @@index([userId])
+}
+
+enum Channel {
+  LINKEDIN_FOUNDER
+  X_THREAD
+  BLOG_OUTLINE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  EDITED
+  REJECTED
+  NEEDS_WORK
+}
+
+model ContentAsset {
+  id            String       @id @default(cuid())
+  signalId      String
+  channel       Channel
+  body          Json // channel-specific structure
+  antiSlopScore Int?
+  antiSlopDetail Json?
+  reviewStatus  ReviewStatus @default(PENDING)
+  editedBody    Json?
+  regenCount    Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  signal   Signal     @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  feedback Feedback[]
+
+  @@unique([signalId, channel])
+  @@index([signalId])
+}
+
+model AgentRun {
+  id            String   @id @default(cuid())
+  signalId      String
+  agent         String // event_listener | significance_scorer | ...
+  model         String
+  promptVersion String
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  cacheReadTokens Int    @default(0)
+  costUsd       Float    @default(0)
+  latencyMs     Int      @default(0)
+  status        String // ok | error
+  error         String?
+  createdAt     DateTime @default(now())
+
+  signal Signal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([signalId])
+}
+
+enum FeedbackDecision {
+  APPROVE
+  EDIT
+  REJECT
+  REGENERATE
+}
+
+model Feedback {
+  id        String           @id @default(cuid())
+  signalId  String
+  assetId   String?
+  userId    String
+  decision  FeedbackDecision
+  notes     String?
+  createdAt DateTime         @default(now())
+
+  signal Signal        @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  asset  ContentAsset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([signalId])
+}
