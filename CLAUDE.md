@@ -21,7 +21,13 @@ npm run test:e2e       # LIVE: runs the full pipeline twice (strong + weak signa
 npm run db:push        # apply prisma/schema.prisma to the DB (uses DIRECT_URL)
 npm run db:studio      # Prisma Studio
 npx prisma generate    # regenerate the client after editing the schema
+npx tsx scripts/seed-prompts.ts   # seed PromptTemplate rows from in-code agent defaults
+npx inngest-cli@latest dev        # local durable-queue dev server (run alongside `npm run dev`)
 ```
+
+**Local dev needs the Inngest dev server running** (`npx inngest-cli@latest dev`)
+to process submitted signals — `POST /api/signals` enqueues a `signal/submitted`
+event instead of running inline. Without it, signals stay `QUEUED`.
 
 There is no unit-test runner; verification is the offline schema test
 (`scripts/test-schemas.ts`) plus the live pipeline script
@@ -68,13 +74,24 @@ or changing an agent's output, edit the Zod schema; do not hand-write JSON Schem
 Runs steps 1→6 sequentially, **persisting each step's output and advancing
 `Signal.status` before the next step** (statuses: QUEUED→NORMALIZING→SCORING→
 STORY→NARRATIVE→CHANNEL→EDITING→READY, plus REJECTED/FAILED). This step-wise
-persistence makes it resumable-from-status, so the current in-process
-fire-and-forget trigger (`void runPipeline(id)` in `POST /api/signals`) can be
-swapped for a durable queue later without changing agent logic. Two control
-points live here: the **significance gate** (`recommendation === "SKIP"` →
-REJECTED with `missingInfo`) and the **bounded anti-slop loop** (one regenerate
-per asset, then mark NEEDS_WORK). A per-run cost guardrail (`settleCost`) aborts
-to FAILED past `PIPELINE_MAX_COST_USD`.
+persistence makes it resumable-from-status. `runPipeline(signalId, step?)` takes
+an optional `StepRunner`: each agent stage is wrapped in `step.run(...)`, so the
+**durable queue (Inngest)** runs each stage as a retryable/resumable step while
+the default passthrough runs inline (used by the e2e test). `POST /api/signals`
+enqueues a `signal/submitted` event (`lib/inngest/{client,functions}.ts`, served
+at `app/api/inngest/route.ts`) rather than running inline. Two control points
+live here: the **significance gate** (`recommendation === "SKIP"` → REJECTED with
+`missingInfo`) and the **bounded anti-slop loop** (one regenerate per asset, then
+mark NEEDS_WORK). A per-run cost guardrail (`settleCost`) aborts to FAILED past
+`PIPELINE_MAX_COST_USD`.
+
+**Prompt versioning.** Agent instructions can be overridden from the DB:
+`PromptTemplate` rows (one active per agent) are loaded by `getActivePrompt(agent,
+fallback)` (`lib/agents/prompts.ts`, 15s process cache) and the active `version`
+is recorded on each `AgentRun`. Agents pass their in-code INSTRUCTION as the
+fallback; `lib/agents/registry.ts` lists the defaults for the seed + `/prompts`
+UI. Edit instructions via `/prompts` (create + activate a version); `/analytics`
+shows per-version + per-agent cost/quality from `AgentRun`/`Feedback`.
 
 **Prompt caching** is intentional: the deterministic context bundle
 (`lib/context/bundle.ts`, `buildContextBundle(orgId)`) is placed as the first,
@@ -85,9 +102,12 @@ e2e test asserts cache reuse on later same-tier agents.
 **Auth + tenancy** (Supabase). `lib/supabase/{server,client,middleware}.ts` wrap
 `@supabase/ssr`. `middleware.ts` refreshes the session and gates protected routes.
 `lib/auth.ts` `getOrCreateAuthContext()` is the key pattern: it reads the Supabase
-user and **lazily provisions a `User` + single-tenant `Organization` (with empty
-context records) on first request** — there is no separate signup webhook. Every
-API route calls `requireAuthContext()` and scopes all queries by `org.id`.
+user and **lazily provisions a `User` + `Organization` (with empty context
+records) on first request** — there is no separate signup webhook. **Invite-aware:**
+if a `PENDING` `OrganizationInvite` matches the user's email, they join that org
+with the invited role instead of getting a new workspace (see `/team` + the team
+API; `requireOwner()` gates owner-only actions). Every API route calls
+`requireAuthContext()` and scopes all queries by `org.id`.
 
 **Context layer = the moat.** `Organization` has one each of
 `OrganizationProfile / FounderProfile / BrandVoice / EditorialStrategy`

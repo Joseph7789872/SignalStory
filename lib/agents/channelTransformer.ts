@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import {
   ChannelBundleSchema,
   CHANNEL_SCHEMA,
@@ -28,7 +29,7 @@ const BLOG_SEO_RULES = `Write the COMPLETE post, ready to publish — never an o
 - Use concrete numbers and a clear point of view; keep paragraphs short and scannable.
 - End with 3-5 standalone key takeaways and a 2-4 item FAQ of self-contained Q&As (FAQPage-ready).`;
 
-const BUNDLE_INSTRUCTION = `${BASE}
+export const BUNDLE_INSTRUCTION = `${BASE}
 
 Produce all three channel assets from the brief:
 - linkedinFounder: a founder-voice LinkedIn post (hook, body, takeaway, hashtags).
@@ -42,13 +43,17 @@ export async function runChannelTransformer(args: {
   context: string;
   brief: NarrativeBrief;
 }): Promise<ChannelBundle> {
+  const prompt = await getActivePrompt("channel_transformer", {
+    version: PROMPT_VERSION,
+    instruction: BUNDLE_INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "channel_transformer",
     tier: "writing",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: BUNDLE_INSTRUCTION,
+    instruction: prompt.instruction,
     input: `Narrative Brief:\n${JSON.stringify(args.brief, null, 2)}`,
     schema: ChannelBundleSchema,
     maxTokens: 8000,

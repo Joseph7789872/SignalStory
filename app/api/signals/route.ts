@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
-import { runPipeline } from "@/lib/pipeline/orchestrator";
+import { inngest } from "@/lib/inngest/client";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +40,25 @@ export async function POST(req: Request) {
     },
   });
 
-  // Fire-and-forget (V1). Phase 2: enqueue to a durable queue instead.
-  void runPipeline(signal.id);
+  // Durable: enqueue to Inngest. The run-pipeline function executes each agent
+  // stage as a retryable/resumable step (see lib/inngest/functions.ts). If the
+  // queue is unreachable (e.g. the Inngest dev server isn't running locally),
+  // keep the signal QUEUED and surface why instead of 500-ing the request.
+  try {
+    await inngest.send({
+      name: "signal/submitted",
+      data: { signalId: signal.id },
+    });
+  } catch (err) {
+    await prisma.signal.update({
+      where: { id: signal.id },
+      data: {
+        statusReason:
+          "Queued but not yet picked up — is the job queue running? " +
+          (err instanceof Error ? err.message : String(err)),
+      },
+    });
+  }
 
   return NextResponse.json({ id: signal.id, status: signal.status });
 }

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 const PROTECTED =
-  /^\/(dashboard|signals|context|onboarding)(\/|$)|^\/api\/(signals|assets|context)(\/|$)/;
+  /^\/(dashboard|signals|context|onboarding|customer-voice|analytics|prompts|team)(\/|$)|^\/api\/(signals|assets|context|customer-voice|analytics|prompts|team)(\/|$)/;
 
 /** Refreshes the Supabase session cookie and gates protected routes. */
 export async function updateSession(request: NextRequest) {

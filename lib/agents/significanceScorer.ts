@@ -1,4 +1,5 @@
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import {
   SignalScoreSchema,
   type SignalScore,
@@ -7,7 +8,7 @@ import {
 
 export const PROMPT_VERSION = "significance_scorer.v1";
 
-const INSTRUCTION = `You are the Significance Scorer. Decide whether this signal DESERVES public content.
+export const INSTRUCTION = `You are the Significance Scorer. Decide whether this signal DESERVES public content.
 Prefer fewer, stronger signals. Be a tough editor, not a cheerleader.
 
 Score each dimension 0-100:
@@ -35,13 +36,17 @@ export async function runSignificanceScorer(args: {
   context: string;
   evidence: EvidencePacket;
 }): Promise<SignalScore> {
+  const prompt = await getActivePrompt("significance_scorer", {
+    version: PROMPT_VERSION,
+    instruction: INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "significance_scorer",
     tier: "reasoning",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: INSTRUCTION,
+    instruction: prompt.instruction,
     input: `Evidence Packet:\n${JSON.stringify(args.evidence, null, 2)}`,
     schema: SignalScoreSchema,
     maxTokens: 2048,

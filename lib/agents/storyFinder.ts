@@ -1,4 +1,5 @@
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import {
   StoryAnglesSchema,
   type StoryAngles,
@@ -8,7 +9,7 @@ import {
 
 export const PROMPT_VERSION = "story_finder.v1";
 
-const INSTRUCTION = `You are the Story Finder. Events are not content; stories are.
+export const INSTRUCTION = `You are the Story Finder. Events are not content; stories are.
 Given an event, find the underlying STORIES — the lesson, surprise, market implication, validated belief, challenged assumption, or useful takeaway.
 
 Bad: "We signed Acme."
@@ -23,13 +24,17 @@ export async function runStoryFinder(args: {
   evidence: EvidencePacket;
   score: SignalScore;
 }): Promise<StoryAngles> {
+  const prompt = await getActivePrompt("story_finder", {
+    version: PROMPT_VERSION,
+    instruction: INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "story_finder",
     tier: "reasoning",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: INSTRUCTION,
+    instruction: prompt.instruction,
     input:
       `Evidence Packet:\n${JSON.stringify(args.evidence, null, 2)}\n\n` +
       `Significance assessment:\n${JSON.stringify(args.score, null, 2)}`,

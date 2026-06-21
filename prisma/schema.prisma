@@ -30,7 +30,32 @@ model Organization {
   brandVoice BrandVoice?
   editorial EditorialStrategy?
   customerVoice CustomerVoiceEntry[]
+  invites   OrganizationInvite[]
   signals   Signal[]
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+// V2: team invitations. Acceptance is implicit on the invitee's first sign-in
+// (matched by email in getOrCreateAuthContext) — no email-delivery service.
+model OrganizationInvite {
+  id        String       @id @default(cuid())
+  orgId     String
+  email     String
+  role      Role         @default(MEMBER)
+  status    InviteStatus @default(PENDING)
+  token     String       @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([email, status])
+  @@index([orgId])
 }
 
 enum Role {
@@ -247,4 +272,20 @@ model Feedback {
   user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([signalId])
+}
+
+// V2: versioned agent instructions. Global defaults in V2 (orgId nullable for
+// later per-org overrides). The active version's text overrides the in-code
+// INSTRUCTION; AgentRun.promptVersion records which version actually ran.
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  orgId       String?
+  agent       String // event_listener | significance_scorer | story_finder | ...
+  version     String // e.g. "significance_scorer.v3"
+  instruction String
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([agent, version])
+  @@index([agent, isActive])
 }

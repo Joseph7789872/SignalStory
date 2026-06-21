@@ -1,4 +1,5 @@
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import {
   NarrativeBriefSchema,
   type NarrativeBrief,
@@ -8,7 +9,7 @@ import {
 
 export const PROMPT_VERSION = "narrative_strategist.v1";
 
-const INSTRUCTION = `You are the Narrative Strategist. Turn the chosen story angle into a strategic Narrative Brief.
+export const INSTRUCTION = `You are the Narrative Strategist. Turn the chosen story angle into a strategic Narrative Brief.
 This brief becomes the single source of truth for all downstream content — it is not the content itself.
 
 Define: the specific audience; the thesis (one controlling idea); the narrative arc (ordered beats); the key arguments; likely objections and crisp responses; a CTA (what the reader should think or do); and how this advances the company's positioning.
@@ -22,13 +23,17 @@ export async function runNarrativeStrategist(args: {
 }): Promise<NarrativeBrief> {
   const recommended =
     args.angles.angles[args.angles.recommendedIndex] ?? args.angles.angles[0];
+  const prompt = await getActivePrompt("narrative_strategist", {
+    version: PROMPT_VERSION,
+    instruction: INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "narrative_strategist",
     tier: "reasoning",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: INSTRUCTION,
+    instruction: prompt.instruction,
     input:
       `Chosen story angle:\n${JSON.stringify(recommended, null, 2)}\n\n` +
       `All angles (for context):\n${JSON.stringify(args.angles.angles, null, 2)}\n\n` +

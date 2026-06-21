@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AssetEditor } from "@/components/signal/asset-editor";
+import { buildBlogJsonLd } from "@/lib/seo/jsonld";
 
 const CHANNEL_LABEL: Record<string, string> = {
   LINKEDIN_FOUNDER: "LinkedIn — founder post",
@@ -126,10 +128,43 @@ function Body({ channel, body }: { channel: string; body: any }) {
             </div>
           </div>
         )}
+
+        <JsonLdBlock body={body} />
       </div>
     );
   }
   return <pre className="text-xs">{JSON.stringify(body, null, 2)}</pre>;
+}
+
+/** Collapsible schema.org JSON-LD (Article + FAQPage) with a copy button. */
+function JsonLdBlock({ body }: { body: any }) {
+  const [copied, setCopied] = useState(false);
+  const json = JSON.stringify(buildBlogJsonLd(body), null, 2);
+  return (
+    <details className="rounded-md border bg-muted/40 p-3 text-xs">
+      <summary className="cursor-pointer font-medium">
+        JSON-LD structured data (Article + FAQPage)
+      </summary>
+      <div className="mt-2 space-y-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            navigator.clipboard.writeText(
+              `<script type="application/ld+json">\n${json}\n</script>`,
+            );
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? "Copied!" : "Copy JSON-LD"}
+        </Button>
+        <pre className="overflow-x-auto whitespace-pre-wrap font-mono">
+          {json}
+        </pre>
+      </div>
+    </details>
+  );
 }
 
 export function AssetCard({
@@ -140,6 +175,7 @@ export function AssetCard({
   onChange: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   // Once any action is taken, collapse the action row into a single
   // "Change decision" toggle. Seed from the asset so a reload of an
   // already-decided (or regenerated) asset stays collapsed.
@@ -148,6 +184,8 @@ export function AssetCard({
       asset.regenCount > 0,
   );
   const detail = asset.antiSlopDetail;
+  // The human-edited body wins over the generated one, everywhere.
+  const current = asset.editedBody ?? asset.body;
 
   async function review(decision: "APPROVE" | "REJECT") {
     setBusy(true);
@@ -158,6 +196,19 @@ export function AssetCard({
     });
     await onChange();
     setBusy(false);
+    setDecided(true);
+  }
+
+  async function saveEdit(editedBody: unknown) {
+    setBusy(true);
+    await fetch(`/api/assets/${asset.id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "EDIT", editedBody }),
+    });
+    await onChange();
+    setBusy(false);
+    setEditing(false);
     setDecided(true);
   }
 
@@ -192,12 +243,23 @@ export function AssetCard({
           {asset.regenCount > 0 && (
             <Badge variant="outline">regenerated</Badge>
           )}
+          {asset.editedBody && <Badge variant="outline">edited</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Body channel={asset.channel} body={asset.body} />
+        {editing ? (
+          <AssetEditor
+            channel={asset.channel}
+            body={current}
+            busy={busy}
+            onSave={saveEdit}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <Body channel={asset.channel} body={current} />
 
-        {detail && (
+            {detail && (
           <div className="rounded-md bg-muted p-3 text-xs">
             <p className="font-medium">
               Anti-slop review
@@ -259,7 +321,17 @@ export function AssetCard({
               </Button>
             </>
           )}
-        </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => setEditing(true)}
+          >
+            Edit
+          </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

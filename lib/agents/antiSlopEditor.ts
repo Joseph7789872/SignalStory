@@ -1,4 +1,5 @@
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import {
   AntiSlopScoreSchema,
   type AntiSlopScore,
@@ -7,7 +8,7 @@ import {
 
 export const PROMPT_VERSION = "anti_slop_editor.v1";
 
-const INSTRUCTION = `You are the Anti-Slop Editor. You evaluate generated content BEFORE it can be approved. You are skeptical and concrete.
+export const INSTRUCTION = `You are the Anti-Slop Editor. You evaluate generated content BEFORE it can be approved. You are skeptical and concrete.
 
 Run these checks (each passed/failed with a one-line note):
 - generic_language: free of clichés and filler?
@@ -29,13 +30,17 @@ export async function runAntiSlopEditor(args: {
   channel: string;
   assetBody: unknown;
 }): Promise<AntiSlopScore> {
+  const prompt = await getActivePrompt("anti_slop_editor", {
+    version: PROMPT_VERSION,
+    instruction: INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "anti_slop_editor",
     tier: "reasoning",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: INSTRUCTION,
+    instruction: prompt.instruction,
     input:
       `Channel: ${args.channel}\n\n` +
       `Narrative Brief (the intended story):\n${JSON.stringify(args.brief, null, 2)}\n\n` +

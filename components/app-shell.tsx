@@ -23,6 +23,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               Context
             </Link>
+            <Link
+              href="/customer-voice"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Customer voice
+            </Link>
+            <Link
+              href="/analytics"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Analytics
+            </Link>
+            <Link
+              href="/prompts"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Prompts
+            </Link>
+            <Link
+              href="/team"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Team
+            </Link>
           </nav>
           <SignOutButton />
         </div>

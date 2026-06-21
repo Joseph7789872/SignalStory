@@ -110,6 +110,8 @@ scripts/            offline schema test + live e2e pipeline test
 
 **V1 (shipped):** manual signals · context layer · significance gate · story/narrative/channel agents · full SEO/GEO blog + LinkedIn + X · anti-slop review with bounded regenerate · approve/reject/regenerate · per-run cost audit · provider-agnostic LLM · Supabase auth + DB.
 
-**V2 (next):** durable job queue · Customer Voice repository · in-app inline editing · richer SEO/GEO (JSON-LD, CMS publish) · prompt versioning + feedback-driven tuning · more channels · multi-user orgs.
+**V2 (shipped):** durable job queue (Inngest, retryable/resumable per agent stage) · in-app inline editing of every channel · JSON-LD (`Article`+`FAQPage`) on the blog · Customer Voice repository woven into the context bundle · cost/quality analytics dashboard · prompt versioning with per-version feedback performance · multi-user orgs (invites + roles).
 
-> V1's in-process runtime is fire-and-forget, but the orchestrator persists after each step and is resumable-from-status, so the durable queue is a drop-in — not a rewrite.
+**V3 (next):** Company Knowledge RAG (pgvector) · external event-listener integrations (Slack/GitHub/Stripe) · LLM-driven prompt auto-tuning · publishing/scheduling.
+
+> The pipeline runs on a durable queue but the orchestrator stayed unchanged — each agent stage was already persisted and resumable-from-status, so the queue wrapped it via a small `StepRunner` seam rather than a rewrite.

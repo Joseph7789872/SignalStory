@@ -1,9 +1,10 @@
 import { runAgent } from "./runtime";
+import { getActivePrompt } from "./prompts";
 import { EvidencePacketSchema, type EvidencePacket } from "./schemas";
 
 export const PROMPT_VERSION = "event_listener.v1";
 
-const INSTRUCTION = `You are the Event Listener. You normalize a raw company signal into a structured Evidence Packet.
+export const INSTRUCTION = `You are the Event Listener. You normalize a raw company signal into a structured Evidence Packet.
 Your job is extraction and classification, NOT writing or opinion.
 - Pull out concrete facts, metrics (verbatim numbers), entities, and links.
 - Classify the event type with a short snake_case label.
@@ -15,13 +16,17 @@ export async function runEventListener(args: {
   context: string;
   rawInput: unknown;
 }): Promise<EvidencePacket> {
+  const prompt = await getActivePrompt("event_listener", {
+    version: PROMPT_VERSION,
+    instruction: INSTRUCTION,
+  });
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "event_listener",
     tier: "extraction",
-    promptVersion: PROMPT_VERSION,
+    promptVersion: prompt.version,
     context: args.context,
-    instruction: INSTRUCTION,
+    instruction: prompt.instruction,
     input: `Raw signal submission:\n${JSON.stringify(args.rawInput, null, 2)}`,
     schema: EvidencePacketSchema,
     maxTokens: 2048,

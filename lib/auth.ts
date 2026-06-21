@@ -38,6 +38,38 @@ export async function getOrCreateAuthContext(): Promise<AuthContext | null> {
     (authUser.user_metadata?.name as string | undefined) ??
     null;
 
+  // Invite-aware: if this email was invited to an existing org, join it instead
+  // of provisioning a new workspace. Acceptance is implicit on first sign-in.
+  const invite = await prisma.organizationInvite.findFirst({
+    where: {
+      email: { equals: email, mode: "insensitive" },
+      status: "PENDING",
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (invite) {
+    const user = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          authUserId: authUser.id,
+          email,
+          name,
+          role: invite.role,
+          orgId: invite.orgId,
+        },
+        include: { org: true },
+      });
+      await tx.organizationInvite.update({
+        where: { id: invite.id },
+        data: { status: "ACCEPTED" },
+      });
+      return u;
+    });
+    return { user, org: user.org };
+  }
+
   const baseSlug = slugify(name ?? email.split("@")[0]);
   const slug = `${baseSlug}-${authUser.id.slice(0, 6).toLowerCase()}`;
 
@@ -62,6 +94,13 @@ export async function getOrCreateAuthContext(): Promise<AuthContext | null> {
   });
 
   return { user, org: user.org };
+}
+
+/** Throws unless the caller is an OWNER — use for team-management actions. */
+export async function requireOwner(): Promise<AuthContext> {
+  const ctx = await requireAuthContext();
+  if (ctx.user.role !== "OWNER") throw new Error("FORBIDDEN");
+  return ctx;
 }
 
 /** Throws if unauthenticated — use in API routes after middleware. */
