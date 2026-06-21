@@ -140,6 +140,13 @@ export function AssetCard({
   onChange: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Once any action is taken, collapse the action row into a single
+  // "Change decision" toggle. Seed from the asset so a reload of an
+  // already-decided (or regenerated) asset stays collapsed.
+  const [decided, setDecided] = useState(
+    ["APPROVED", "EDITED", "REJECTED"].includes(asset.reviewStatus) ||
+      asset.regenCount > 0,
+  );
   const detail = asset.antiSlopDetail;
 
   async function review(decision: "APPROVE" | "REJECT") {
@@ -151,6 +158,7 @@ export function AssetCard({
     });
     await onChange();
     setBusy(false);
+    setDecided(true);
   }
 
   async function regenerate() {
@@ -158,6 +166,7 @@ export function AssetCard({
     await fetch(`/api/assets/${asset.id}/regenerate`, { method: "POST" });
     await onChange();
     setBusy(false);
+    setDecided(true);
   }
 
   const slopVariant =
@@ -214,25 +223,42 @@ export function AssetCard({
         )}
 
         <div className="flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => review("APPROVE")}>
-            Approve
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={regenerate}
-          >
-            Regenerate
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={busy}
-            onClick={() => review("REJECT")}
-          >
-            Reject
-          </Button>
+          {decided ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setDecided(false)}
+            >
+              Change decision
+            </Button>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => review("APPROVE")}
+              >
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={regenerate}
+              >
+                Regenerate
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={busy}
+                onClick={() => review("REJECT")}
+              >
+                Reject
+              </Button>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
