@@ -41,7 +41,7 @@ export const SignalScoreSchema = z.object({
     .describe("Whether this signal deserves content"),
   reasons: z.array(z.string()).describe("Concrete reasons for the score"),
   suggestedChannels: z
-    .array(z.enum(["LINKEDIN_FOUNDER", "X_THREAD", "BLOG_OUTLINE"]))
+    .array(z.enum(["LINKEDIN_FOUNDER", "X_THREAD", "BLOG_POST"]))
     .describe("Channels this signal suits best"),
   missingInfo: z
     .array(z.string())
@@ -106,19 +106,59 @@ export const XThreadSchema = z.object({
 });
 export type XThread = z.infer<typeof XThreadSchema>;
 
-export const BlogOutlineSchema = z.object({
-  workingTitle: z.string(),
-  targetReader: z.string(),
-  sections: z.array(
-    z.object({ heading: z.string(), beats: z.array(z.string()) }),
-  ),
+// A COMPLETE, publish-ready blog post — not an outline — with basic on-page SEO
+// and GEO (generative-engine optimization) metadata so the post is both
+// rankable and extractable/citable by AI answer engines.
+export const BlogPostSchema = z.object({
+  seoTitle: z
+    .string()
+    .describe("SEO <title>, <= 60 chars, leads with the primary keyword"),
+  metaDescription: z
+    .string()
+    .describe(
+      "Meta description, <= 155 chars, compelling, includes the primary keyword",
+    ),
+  slug: z
+    .string()
+    .describe("URL slug: kebab-case, keyword-rich, no stop-word filler"),
+  primaryKeyword: z
+    .string()
+    .describe("The single primary search/intent phrase the post targets"),
+  secondaryKeywords: z
+    .array(z.string())
+    .describe("Related keywords/entities to weave in naturally (no stuffing)"),
+  h1: z.string().describe("On-page H1 headline; may differ from the SEO title"),
+  tldr: z
+    .string()
+    .describe(
+      "2-3 sentence direct-answer summary at the top — the quotable answer an AI engine can extract (GEO)",
+    ),
+  bodyMarkdown: z
+    .string()
+    .describe(
+      "The FULL post in Markdown: ## / ### headings phrased as searched questions, short scannable paragraphs, concrete numbers, a clear point of view, ~700-1100 words. No banned phrases, no AI-tells.",
+    ),
+  keyTakeaways: z
+    .array(z.string())
+    .describe("3-5 standalone, extractable takeaways (GEO)"),
+  faq: z
+    .array(
+      z.object({
+        question: z.string(),
+        answer: z
+          .string()
+          .describe("Self-contained answer, 1-3 sentences, for answer engines"),
+      }),
+    )
+    .describe("2-4 Q&A pairs targeting real queries (AEO/GEO; FAQPage-ready)"),
+  wordCount: z.number().int().describe("Approximate word count of bodyMarkdown"),
 });
-export type BlogOutline = z.infer<typeof BlogOutlineSchema>;
+export type BlogPost = z.infer<typeof BlogPostSchema>;
 
 export const ChannelBundleSchema = z.object({
   linkedinFounder: LinkedinFounderSchema,
   xThread: XThreadSchema,
-  blogOutline: BlogOutlineSchema,
+  blogPost: BlogPostSchema,
 });
 export type ChannelBundle = z.infer<typeof ChannelBundleSchema>;
 
@@ -126,13 +166,13 @@ export type ChannelBundle = z.infer<typeof ChannelBundleSchema>;
 export const CHANNEL_SCHEMA = {
   LINKEDIN_FOUNDER: LinkedinFounderSchema,
   X_THREAD: XThreadSchema,
-  BLOG_OUTLINE: BlogOutlineSchema,
+  BLOG_POST: BlogPostSchema,
 } as const;
 
 export const CHANNEL_BUNDLE_KEY = {
   LINKEDIN_FOUNDER: "linkedinFounder",
   X_THREAD: "xThread",
-  BLOG_OUTLINE: "blogOutline",
+  BLOG_POST: "blogPost",
 } as const;
 
 // --- [6] Anti-Slop Editor ---

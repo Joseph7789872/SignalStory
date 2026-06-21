@@ -175,7 +175,7 @@ model Signal {
 enum Channel {
   LINKEDIN_FOUNDER
   X_THREAD
-  BLOG_OUTLINE
+  BLOG_POST
 }
 
 enum ReviewStatus {

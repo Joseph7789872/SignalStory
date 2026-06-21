@@ -23,7 +23,7 @@ const MAX_COST = Number(process.env.PIPELINE_MAX_COST_USD ?? "2.00");
 const CHANNELS: { channel: Channel; key: keyof ChannelBundle }[] = [
   { channel: Channel.LINKEDIN_FOUNDER, key: "linkedinFounder" },
   { channel: Channel.X_THREAD, key: "xThread" },
-  { channel: Channel.BLOG_OUTLINE, key: "blogOutline" },
+  { channel: Channel.BLOG_POST, key: "blogPost" },
 ];
 
 const asJson = (v: unknown) => v as Prisma.InputJsonValue;

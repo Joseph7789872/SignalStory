@@ -8,7 +8,7 @@ import {
   type NarrativeBrief,
 } from "./schemas";
 
-export const PROMPT_VERSION = "channel_transformer.v2";
+export const PROMPT_VERSION = "channel_transformer.v3";
 
 const BASE = `You are the Channel Transformer. You write the FINAL content — the last step, not the first.
 Write multiple representations of ONE story (the Narrative Brief), not separate stories.
@@ -19,12 +19,23 @@ Rules:
 - Earn the first line. Teach something. Reflect a real point of view.
 - A competitor must NOT be able to publish the same words.`;
 
+// Basic SEO + GEO (generative-engine optimization) rules for the blog post.
+const BLOG_SEO_RULES = `Write the COMPLETE post, ready to publish — never an outline. Apply basic SEO + GEO:
+- Target ONE primary keyword/intent; weave secondary keywords and named entities in naturally (no stuffing).
+- seoTitle <= 60 chars with the keyword first; metaDescription <= 155 chars; slug kebab-case and keyword-rich.
+- Open with a TL;DR that directly answers the core question in 2-3 sentences (so AI answer engines can extract it).
+- Use descriptive ## / ### Markdown headings phrased as the questions readers actually search.
+- Use concrete numbers and a clear point of view; keep paragraphs short and scannable.
+- End with 3-5 standalone key takeaways and a 2-4 item FAQ of self-contained Q&As (FAQPage-ready).`;
+
 const BUNDLE_INSTRUCTION = `${BASE}
 
 Produce all three channel assets from the brief:
 - linkedinFounder: a founder-voice LinkedIn post (hook, body, takeaway, hashtags).
 - xThread: an X thread (array of tweets, each <= 280 chars, first tweet is the hook).
-- blogOutline: a blog outline (working title, target reader, sections with beats).`;
+- blogPost: a complete, publish-ready, SEO/GEO-optimized blog post (not an outline).
+
+${BLOG_SEO_RULES}`;
 
 export async function runChannelTransformer(args: {
   signalId: string;
@@ -40,7 +51,7 @@ export async function runChannelTransformer(args: {
     instruction: BUNDLE_INSTRUCTION,
     input: `Narrative Brief:\n${JSON.stringify(args.brief, null, 2)}`,
     schema: ChannelBundleSchema,
-    maxTokens: 4096,
+    maxTokens: 8000,
   });
   return data;
 }
@@ -51,7 +62,7 @@ const CHANNEL_DESC: Record<ChannelKey, string> = {
   LINKEDIN_FOUNDER:
     "a founder-voice LinkedIn post (hook, body, takeaway, hashtags)",
   X_THREAD: "an X thread (tweets array, each <= 280 chars)",
-  BLOG_OUTLINE: "a blog outline (workingTitle, targetReader, sections[])",
+  BLOG_POST: `a complete, SEO/GEO-optimized blog post (seoTitle, metaDescription, slug, primaryKeyword, secondaryKeywords, h1, tldr, bodyMarkdown, keyTakeaways, faq, wordCount).\n\n${BLOG_SEO_RULES}`,
 };
 
 /** Regenerate a single channel using the anti-slop editor's guidance. */
@@ -72,7 +83,7 @@ export async function regenerateChannel<K extends ChannelKey>(args: {
     instruction: `${BASE}\n\nRewrite ${CHANNEL_DESC[args.channel]}. The prior draft failed anti-slop review. Apply this guidance precisely:\n${args.guidance}`,
     input: `Narrative Brief:\n${JSON.stringify(args.brief, null, 2)}`,
     schema: schema as z.ZodType<z.infer<(typeof CHANNEL_SCHEMA)[K]>>,
-    maxTokens: 3072,
+    maxTokens: 6000,
   });
   return data;
 }

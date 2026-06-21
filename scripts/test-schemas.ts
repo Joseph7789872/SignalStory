@@ -91,10 +91,18 @@ check(
       hashtags: ["x"],
     },
     xThread: { tweets: ["t1", "t2"] },
-    blogOutline: {
-      workingTitle: "wt",
-      targetReader: "tr",
-      sections: [{ heading: "h", beats: ["b1"] }],
+    blogPost: {
+      seoTitle: "Why governance gates enterprise AI adoption",
+      metaDescription: "What a 6-week security review taught us about selling AI to banks.",
+      slug: "governance-gates-enterprise-ai-adoption",
+      primaryKeyword: "enterprise AI governance",
+      secondaryKeywords: ["audit logging", "AI procurement"],
+      h1: "The real enterprise AI blocker isn't the model",
+      tldr: "Enterprise AI deals stall on governance, not capability. Here's the proof.",
+      bodyMarkdown: "## The blocker\n\nReal content here with numbers.",
+      keyTakeaways: ["Governance gates adoption", "Proof beats vision"],
+      faq: [{ question: "What blocks enterprise AI?", answer: "Governance, not model quality." }],
+      wordCount: 850,
     },
   }).success,
 );

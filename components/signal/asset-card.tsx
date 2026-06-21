@@ -14,7 +14,7 @@ import {
 const CHANNEL_LABEL: Record<string, string> = {
   LINKEDIN_FOUNDER: "LinkedIn — founder post",
   X_THREAD: "X thread",
-  BLOG_OUTLINE: "Blog outline",
+  BLOG_POST: "Blog post",
 };
 
 const REVIEW_VARIANT: Record<
@@ -55,21 +55,77 @@ function Body({ channel, body }: { channel: string; body: any }) {
       </ol>
     );
   }
-  if (channel === "BLOG_OUTLINE") {
+  if (channel === "BLOG_POST") {
     return (
-      <div className="space-y-2 text-sm">
-        <p className="font-medium">{body.workingTitle}</p>
-        <p className="text-xs text-muted-foreground">For: {body.targetReader}</p>
-        {body.sections?.map((s: any, i: number) => (
-          <div key={i}>
-            <p className="font-medium">{s.heading}</p>
+      <div className="space-y-3 text-sm">
+        {/* SEO/GEO metadata */}
+        <div className="rounded-md border bg-muted/40 p-3 text-xs">
+          <p className="font-medium">SEO / GEO</p>
+          <p>
+            <span className="text-muted-foreground">Title:</span> {body.seoTitle}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Meta:</span>{" "}
+            {body.metaDescription}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Slug:</span>{" "}
+            <code>/{body.slug}</code>
+          </p>
+          <p>
+            <span className="text-muted-foreground">Primary keyword:</span>{" "}
+            {body.primaryKeyword}
+          </p>
+          {body.secondaryKeywords?.length > 0 && (
+            <p>
+              <span className="text-muted-foreground">Secondary:</span>{" "}
+              {body.secondaryKeywords.join(", ")}
+            </p>
+          )}
+          {body.wordCount != null && (
+            <p>
+              <span className="text-muted-foreground">Words:</span> ~
+              {body.wordCount}
+            </p>
+          )}
+        </div>
+
+        {body.h1 && <p className="text-base font-semibold">{body.h1}</p>}
+        {body.tldr && (
+          <p className="rounded bg-muted p-2 italic text-muted-foreground">
+            TL;DR: {body.tldr}
+          </p>
+        )}
+        {body.bodyMarkdown && (
+          <pre className="whitespace-pre-wrap font-sans text-sm">
+            {body.bodyMarkdown}
+          </pre>
+        )}
+
+        {body.keyTakeaways?.length > 0 && (
+          <div>
+            <p className="font-medium">Key takeaways</p>
             <ul className="list-disc pl-5 text-muted-foreground">
-              {s.beats?.map((b: string, j: number) => (
-                <li key={j}>{b}</li>
+              {body.keyTakeaways.map((t: string, i: number) => (
+                <li key={i}>{t}</li>
               ))}
             </ul>
           </div>
-        ))}
+        )}
+
+        {body.faq?.length > 0 && (
+          <div>
+            <p className="font-medium">FAQ</p>
+            <div className="space-y-1">
+              {body.faq.map((f: any, i: number) => (
+                <div key={i}>
+                  <p className="font-medium">{f.question}</p>
+                  <p className="text-muted-foreground">{f.answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
