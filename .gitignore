@@ -18,3 +18,5 @@ prisma/migrations/
 .idea/
 .vscode/
 .gstack/
+# Exported chat transcript — may contain secrets pasted in conversation.
+session.txt

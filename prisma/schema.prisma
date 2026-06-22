@@ -155,8 +155,11 @@ model CustomerVoiceEntry {
 // --- Integrations / event ingestion (V3) ---
 
 enum IntegrationProvider {
-  STRIPE
   GITHUB
+  PIPEDRIVE
+  ATTIO
+  LINEAR
+  WEBHOOK
 }
 
 enum ConnectionStatus {
@@ -196,7 +199,8 @@ model IngestedEvent {
   signalId     String?
   createdAt    DateTime            @default(now())
 
-  @@unique([provider, externalId])
+  // Per-connection dedup: generic/user-supplied ids can't collide across orgs.
+  @@unique([connectionId, externalId])
   @@index([connectionId])
 }
 
@@ -204,8 +208,11 @@ model IngestedEvent {
 
 enum SignalSource {
   MANUAL
-  STRIPE
   GITHUB
+  PIPEDRIVE
+  ATTIO
+  LINEAR
+  WEBHOOK
 }
 
 enum SignalStatus {

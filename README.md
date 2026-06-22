@@ -112,8 +112,10 @@ scripts/            offline schema test + live e2e pipeline test
 
 **V2 (shipped):** durable job queue (Inngest, retryable/resumable per agent stage) · in-app inline editing of every channel · JSON-LD (`Article`+`FAQPage`) on the blog · Customer Voice repository woven into the context bundle · cost/quality analytics dashboard · prompt versioning with per-version feedback performance · multi-user orgs (invites + roles).
 
-**V3 (shipped):** auto-ingestion / event listeners — a provider-agnostic ingestion layer (signature-verified webhooks → dedup → coarse filter → Signal → same pipeline) with **Stripe** and **GitHub** connectors, encrypted connection secrets, and an `/integrations` UI. Manual entry is now just one source among many.
+**V3 (shipped):** auto-ingestion / event listeners — a provider-agnostic ingestion layer (signature-verified webhooks → dedup → coarse filter → Signal → same pipeline), encrypted connection secrets, and an `/integrations` UI. Manual entry is now just one source among many.
 
-**V4 (next):** Company Knowledge RAG (pgvector) · more connectors (Slack/HubSpot, OAuth) · LLM-driven prompt auto-tuning · publishing/scheduling.
+**V4 (shipped):** CRM + universal connectors — native signed-inbound **Pipedrive**, **Attio**, and **Linear** connectors (deal won / record updated / issue shipped) plus a generic **Incoming Webhook (Zapier/Make)** adapter that authenticates with the URL token + a shared bearer secret, so any tool without a native connector (HubSpot, Salesforce, Gong, Slack, …) can pipe events in. Stripe was retired in favor of the lower-trust-ask CRM path; dedup is now per-connection. _Notion deferred — its sparse inbound payloads need Notion-API enrichment._
+
+**V5 (next):** Company Knowledge RAG (pgvector) · OAuth-native connectors · Notion API enrichment · LLM-driven prompt auto-tuning · publishing/scheduling.
 
 > The pipeline runs on a durable queue but the orchestrator stayed unchanged — each agent stage was already persisted and resumable-from-status, so the queue wrapped it via a small `StepRunner` seam rather than a rewrite.

@@ -61,11 +61,12 @@ export async function POST(
 
   let ingested = 0;
   for (const event of events) {
-    // Dedup — providers retry; never create the same Signal twice.
+    // Dedup — providers retry; never create the same Signal twice. Scoped per
+    // connection so user-supplied ids (generic webhook) can't collide across orgs.
     const seen = await prisma.ingestedEvent.findUnique({
       where: {
-        provider_externalId: {
-          provider: adapter.provider,
+        connectionId_externalId: {
+          connectionId: connection.id,
           externalId: event.externalId,
         },
       },

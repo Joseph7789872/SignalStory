@@ -19,7 +19,8 @@ export type ProviderEvent = {
 /** Per-connection ingestion config (stored on IntegrationConnection.config). */
 export type ConnectionConfig = {
   events?: string[]; // event-type allowlist; empty/undefined = adapter default
-  minAmountUsd?: number; // coarse threshold for money events
+  wonDealsOnly?: boolean; // Pipedrive: only ingest deals whose status is "won"
+  completedOnly?: boolean; // Linear: only ingest issues that moved to a completed state
   [k: string]: unknown;
 };
 
@@ -35,8 +36,8 @@ export type VerifyArgs = {
  * a single new file registered in registry.ts.
  */
 export interface IntegrationProviderAdapter {
-  slug: string; // URL segment, e.g. "stripe"
-  provider: IntegrationProvider; // Prisma enum, e.g. "STRIPE"
+  slug: string; // URL segment, e.g. "pipedrive"
+  provider: IntegrationProvider; // Prisma enum, e.g. "PIPEDRIVE"
   label: string;
   events: { type: string; label: string }[]; // selectable event types for the UI
   /** Verify the webhook signature. Return false to reject (→ 401). */

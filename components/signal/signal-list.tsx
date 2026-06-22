@@ -21,8 +21,11 @@ type Row = {
 
 const SOURCE_LABEL: Record<string, string> = {
   MANUAL: "Manual",
-  STRIPE: "Stripe",
   GITHUB: "GitHub",
+  PIPEDRIVE: "Pipedrive",
+  ATTIO: "Attio",
+  LINEAR: "Linear",
+  WEBHOOK: "Webhook",
 };
 
 export function SignalList({ signals }: { signals: Row[] }) {

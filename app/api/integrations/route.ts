@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { IntegrationProvider } from "@prisma/client";
+import type { IntegrationProvider, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { requireAuthContext, requireOwner } from "@/lib/auth";
@@ -54,17 +54,22 @@ export async function GET() {
   });
 }
 
+// Valid providers come from the registry — no hardcoded list to drift.
+const PROVIDER_VALUES = PROVIDERS.map((p) => p.provider) as [string, ...string[]];
+
+const ConfigInput = z
+  .object({
+    events: z.array(z.string()).optional(),
+    wonDealsOnly: z.boolean().optional(),
+    completedOnly: z.boolean().optional(),
+  })
+  .passthrough();
+
 const CreateInput = z.object({
-  provider: z.enum(["STRIPE", "GITHUB"]),
+  provider: z.enum(PROVIDER_VALUES),
   label: z.string().optional().default(""),
   secret: z.string().min(8),
-  config: z
-    .object({
-      events: z.array(z.string()).optional(),
-      minAmountUsd: z.number().optional(),
-    })
-    .optional()
-    .default({}),
+  config: ConfigInput.optional().default({}),
 });
 
 export async function POST(req: Request) {
@@ -87,7 +92,7 @@ export async function POST(req: Request) {
       provider: provider as IntegrationProvider,
       label,
       secret: encryptSecret(secret),
-      config,
+      config: config as Prisma.InputJsonValue,
       createdById: ctx.user.id,
     },
   });
@@ -102,12 +107,7 @@ export async function POST(req: Request) {
 const PatchInput = z.object({
   id: z.string(),
   status: z.enum(["ACTIVE", "PAUSED"]).optional(),
-  config: z
-    .object({
-      events: z.array(z.string()).optional(),
-      minAmountUsd: z.number().optional(),
-    })
-    .optional(),
+  config: ConfigInput.optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -128,7 +128,7 @@ export async function PATCH(req: Request) {
     where: { id, orgId: ctx.org.id },
     data: {
       ...(status ? { status } : {}),
-      ...(config ? { config } : {}),
+      ...(config ? { config: config as Prisma.InputJsonValue } : {}),
     },
   });
   return NextResponse.json({ ok: true });

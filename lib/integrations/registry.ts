@@ -1,19 +1,25 @@
 import type { IntegrationProviderAdapter } from "./types";
-import { stripeAdapter } from "./providers/stripe";
 import { githubAdapter } from "./providers/github";
+import { pipedriveAdapter } from "./providers/pipedrive";
+import { attioAdapter } from "./providers/attio";
+import { linearAdapter } from "./providers/linear";
+import { webhookAdapter } from "./providers/webhook";
 
 // Provider-agnostic registry (mirrors lib/agents/registry.ts). Keyed by the URL
 // slug used in /api/webhooks/[provider]/[token]. Add a source = one new adapter.
 export const ADAPTERS: Record<string, IntegrationProviderAdapter> = {
-  [stripeAdapter.slug]: stripeAdapter,
+  [pipedriveAdapter.slug]: pipedriveAdapter,
+  [attioAdapter.slug]: attioAdapter,
+  [linearAdapter.slug]: linearAdapter,
   [githubAdapter.slug]: githubAdapter,
+  [webhookAdapter.slug]: webhookAdapter,
 };
 
 export function getAdapter(slug: string): IntegrationProviderAdapter | null {
   return ADAPTERS[slug?.toLowerCase()] ?? null;
 }
 
-/** Resolve an adapter by its Prisma enum value (e.g. "STRIPE"). */
+/** Resolve an adapter by its Prisma enum value (e.g. "PIPEDRIVE"). */
 export function getAdapterByProvider(
   provider: string,
 ): IntegrationProviderAdapter | null {
