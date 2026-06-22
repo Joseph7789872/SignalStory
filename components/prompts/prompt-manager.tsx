@@ -148,8 +148,17 @@ function AgentCard({
                 onChange={(e) => setInstruction(e.target.value)}
               />
             </div>
+            {!version.trim() && (
+              <p className="text-xs text-muted-foreground">
+                A version id is required.
+              </p>
+            )}
             <div className="flex gap-2">
-              <Button size="sm" type="submit" disabled={busy}>
+              <Button
+                size="sm"
+                type="submit"
+                disabled={busy || !version.trim() || instruction.trim().length < 10}
+              >
                 {busy ? "Saving…" : "Create & activate"}
               </Button>
               <Button
@@ -167,6 +176,7 @@ function AgentCard({
             size="sm"
             variant="outline"
             onClick={() => {
+              setVersion(`${block.agent}.v${block.versions.length + 1}`);
               setInstruction(block.defaultInstruction);
               setOpen(true);
             }}
