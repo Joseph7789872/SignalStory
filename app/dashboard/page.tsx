@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { StatusBadge } from "@/components/signal/status-badge";
+import { SignalList } from "@/components/signal/signal-list";
 
 export const dynamic = "force-dynamic";
 
@@ -58,39 +58,16 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {signals.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No signals yet. Submit your first one to see the pipeline run.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {signals.map((s) => {
-            const raw = s.rawInput as { title?: string };
-            return (
-              <Link key={s.id} href={`/signals/${s.id}`}>
-                <Card className="transition-colors hover:bg-accent">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {raw?.title ?? "Untitled signal"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(s.createdAt).toLocaleString()}
-                        {s.significanceScore !== null &&
-                          ` · significance ${s.significanceScore}/100`}
-                        {s.costUsd > 0 && ` · $${s.costUsd.toFixed(3)}`}
-                      </p>
-                    </div>
-                    <StatusBadge status={s.status} />
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <SignalList
+        signals={signals.map((s) => ({
+          id: s.id,
+          title: (s.rawInput as { title?: string })?.title ?? "Untitled signal",
+          createdAt: s.createdAt.toISOString(),
+          significanceScore: s.significanceScore,
+          costUsd: s.costUsd,
+          status: s.status,
+        }))}
+      />
     </div>
   );
 }
