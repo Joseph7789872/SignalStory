@@ -66,6 +66,7 @@ export default async function DashboardPage() {
           significanceScore: s.significanceScore,
           costUsd: s.costUsd,
           status: s.status,
+          source: s.source,
         }))}
       />
     </div>

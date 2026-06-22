@@ -22,6 +22,7 @@ npm run db:push        # apply prisma/schema.prisma to the DB (uses DIRECT_URL)
 npm run db:studio      # Prisma Studio
 npx prisma generate    # regenerate the client after editing the schema
 npx tsx scripts/seed-prompts.ts   # seed PromptTemplate rows from in-code agent defaults
+npx tsx scripts/simulate-webhook.ts  # LIVE: POSTs signed Stripe webhooks to a running dev server (create/dedup/filter)
 npx inngest-cli@latest dev        # local durable-queue dev server (run alongside `npm run dev`)
 ```
 
@@ -84,6 +85,23 @@ live here: the **significance gate** (`recommendation === "SKIP"` → REJECTED w
 `missingInfo`) and the **bounded anti-slop loop** (one regenerate per asset, then
 mark NEEDS_WORK). A per-run cost guardrail (`settleCost`) aborts to FAILED past
 `PIPELINE_MAX_COST_USD`.
+
+**Event ingestion (V3) = the ingestion layer feeding the same pipeline.**
+Third-party events become Signals that ride the identical `signal/submitted`
+path — agents and orchestrator are untouched. `lib/integrations/` mirrors the
+LLM provider layer: `types.ts` (the `IntegrationProviderAdapter` interface),
+`providers/{stripe,github}.ts` (each: `verify` signature, `parse` → events,
+`shouldIngest` coarse filter, `toRawInput` → the Signal rawInput shape), and
+`registry.ts`. The public, signature-verified route
+`app/api/webhooks/[provider]/[token]/route.ts` resolves the connection by its
+unguessable `webhookToken`, verifies the signature, dedups via `IngestedEvent`
+(`@@unique([provider, externalId])`), applies the coarse filter, then creates a
+Signal (`source = STRIPE|GITHUB`, `userId = null`, `connectionId` set) and
+`inngest.send`s it. Connection secrets are AES-256-GCM encrypted at rest
+(`lib/crypto.ts`, `ENCRYPTION_KEY`). Connections are managed (owner-gated) via
+`/api/integrations` + `/integrations`; the dashboard shows a source badge and
+hides auto-`REJECTED` noise by default. **`/api/webhooks/*` must stay out of the
+middleware PROTECTED regex** (no Supabase session on inbound webhooks).
 
 **Prompt versioning.** Agent instructions can be overridden from the DB:
 `PromptTemplate` rows (one active per agent) are loaded by `getActivePrompt(agent,

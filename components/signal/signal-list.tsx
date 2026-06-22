@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/signal/status-badge";
 
@@ -15,12 +16,20 @@ type Row = {
   significanceScore: number | null;
   costUsd: number;
   status: string;
+  source: string;
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  MANUAL: "Manual",
+  STRIPE: "Stripe",
+  GITHUB: "GitHub",
 };
 
 export function SignalList({ signals }: { signals: Row[] }) {
   const router = useRouter();
   const [rows, setRows] = useState(signals);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [hideAutoRejected, setHideAutoRejected] = useState(true);
 
   async function remove(e: React.MouseEvent, id: string) {
     // Don't navigate into the signal when clicking the trash icon.
@@ -51,9 +60,24 @@ export function SignalList({ signals }: { signals: Row[] }) {
     );
   }
 
+  // Auto-ingested signals the significance gate rejected are noise — hide by default.
+  const isAutoRejected = (r: Row) => r.source !== "MANUAL" && r.status === "REJECTED";
+  const autoRejectedCount = rows.filter(isAutoRejected).length;
+  const visible = hideAutoRejected ? rows.filter((r) => !isAutoRejected(r)) : rows;
+
   return (
     <div className="space-y-3">
-      {rows.map((s) => (
+      {autoRejectedCount > 0 && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={hideAutoRejected}
+            onChange={(e) => setHideAutoRejected(e.target.checked)}
+          />
+          Hide auto-ingested signals the gate rejected ({autoRejectedCount})
+        </label>
+      )}
+      {visible.map((s) => (
         <div key={s.id} className="relative">
           <Link href={`/signals/${s.id}`} className="block">
             <Card className="transition-colors hover:bg-accent">
@@ -67,7 +91,14 @@ export function SignalList({ signals }: { signals: Row[] }) {
                     {s.costUsd > 0 && ` · $${s.costUsd.toFixed(3)}`}
                   </p>
                 </div>
-                <StatusBadge status={s.status} />
+                <div className="flex items-center gap-2">
+                  {s.source !== "MANUAL" && (
+                    <Badge variant="outline">
+                      {SOURCE_LABEL[s.source] ?? s.source}
+                    </Badge>
+                  )}
+                  <StatusBadge status={s.status} />
+                </div>
               </CardContent>
             </Card>
           </Link>

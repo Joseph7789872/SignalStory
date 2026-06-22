@@ -31,6 +31,7 @@ model Organization {
   editorial EditorialStrategy?
   customerVoice CustomerVoiceEntry[]
   invites   OrganizationInvite[]
+  integrations IntegrationConnection[]
   signals   Signal[]
 }
 
@@ -151,10 +152,60 @@ model CustomerVoiceEntry {
   @@index([orgId])
 }
 
+// --- Integrations / event ingestion (V3) ---
+
+enum IntegrationProvider {
+  STRIPE
+  GITHUB
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  PAUSED
+}
+
+// A per-org connection to a third-party event source. The webhook signing
+// secret is stored ENCRYPTED (see lib/crypto.ts). Inbound events hit
+// /api/webhooks/[provider]/[webhookToken].
+model IntegrationConnection {
+  id           String              @id @default(cuid())
+  orgId        String
+  provider     IntegrationProvider
+  status       ConnectionStatus    @default(ACTIVE)
+  webhookToken String              @unique @default(cuid()) // unguessable path segment
+  secret       String // provider signing secret, AES-256-GCM encrypted at rest
+  config       Json                @default("{}") // event-type allowlist + thresholds
+  label        String              @default("")
+  createdById  String?
+  lastEventAt  DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+// Dedup ledger: providers retry webhooks, so we never double-create a Signal.
+// signalId is null when an event was received but filtered out (not ingested).
+model IngestedEvent {
+  id           String              @id @default(cuid())
+  connectionId String
+  provider     IntegrationProvider
+  externalId   String // the provider's event id
+  signalId     String?
+  createdAt    DateTime            @default(now())
+
+  @@unique([provider, externalId])
+  @@index([connectionId])
+}
+
 // --- Pipeline ---
 
 enum SignalSource {
   MANUAL
+  STRIPE
+  GITHUB
 }
 
 enum SignalStatus {
@@ -173,7 +224,8 @@ enum SignalStatus {
 model Signal {
   id               String       @id @default(cuid())
   orgId            String
-  userId           String
+  userId           String? // null for auto-ingested signals (no human author)
+  connectionId     String? // set for auto-ingested signals (IntegrationConnection)
   source           SignalSource @default(MANUAL)
   rawInput         Json // { title, description, evidence, links[], metadata }
   evidencePacket   Json? // [1] normalizer output
@@ -188,7 +240,7 @@ model Signal {
   updatedAt        DateTime     @updatedAt
 
   org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   assets   ContentAsset[]
   runs     AgentRun[]
   feedback Feedback[]

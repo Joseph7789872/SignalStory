@@ -3,8 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
+// NB: /api/webhooks is intentionally NOT protected — third parties POST there
+// with no Supabase session; those routes authenticate via signature + token.
 const PROTECTED =
-  /^\/(dashboard|signals|context|onboarding|customer-voice|analytics|prompts|team)(\/|$)|^\/api\/(signals|assets|context|customer-voice|analytics|prompts|team)(\/|$)/;
+  /^\/(dashboard|signals|context|onboarding|customer-voice|analytics|prompts|team|integrations)(\/|$)|^\/api\/(signals|assets|context|customer-voice|analytics|prompts|team|integrations)(\/|$)/;
 
 /** Refreshes the Supabase session cookie and gates protected routes. */
 export async function updateSession(request: NextRequest) {

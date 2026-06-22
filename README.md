@@ -112,6 +112,8 @@ scripts/            offline schema test + live e2e pipeline test
 
 **V2 (shipped):** durable job queue (Inngest, retryable/resumable per agent stage) · in-app inline editing of every channel · JSON-LD (`Article`+`FAQPage`) on the blog · Customer Voice repository woven into the context bundle · cost/quality analytics dashboard · prompt versioning with per-version feedback performance · multi-user orgs (invites + roles).
 
-**V3 (next):** Company Knowledge RAG (pgvector) · external event-listener integrations (Slack/GitHub/Stripe) · LLM-driven prompt auto-tuning · publishing/scheduling.
+**V3 (shipped):** auto-ingestion / event listeners — a provider-agnostic ingestion layer (signature-verified webhooks → dedup → coarse filter → Signal → same pipeline) with **Stripe** and **GitHub** connectors, encrypted connection secrets, and an `/integrations` UI. Manual entry is now just one source among many.
+
+**V4 (next):** Company Knowledge RAG (pgvector) · more connectors (Slack/HubSpot, OAuth) · LLM-driven prompt auto-tuning · publishing/scheduling.
 
 > The pipeline runs on a durable queue but the orchestrator stayed unchanged — each agent stage was already persisted and resumable-from-status, so the queue wrapped it via a small `StepRunner` seam rather than a rewrite.

@@ -30,6 +30,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Customer voice
             </Link>
             <Link
+              href="/integrations"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Integrations
+            </Link>
+            <Link
               href="/analytics"
               className="text-muted-foreground hover:text-foreground"
             >
