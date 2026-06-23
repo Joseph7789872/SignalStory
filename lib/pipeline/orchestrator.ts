@@ -67,6 +67,21 @@ export async function runPipeline(
   signalId: string,
   step: StepRunner = passthrough,
 ): Promise<void> {
+  const claim = await prisma.signal.updateMany({
+    where: { id: signalId, status: { in: ["QUEUED", "FAILED"] } },
+    data: { status: "NORMALIZING", statusReason: null },
+  });
+  if (claim.count === 0) {
+    const existing = await prisma.signal.findUnique({
+      where: { id: signalId },
+      select: { status: true },
+    });
+    if (!existing) throw new Error(`Signal not found: ${signalId}`);
+    if (existing.status === "READY" || existing.status === "REJECTED") return;
+    // Another worker is already handling this signal.
+    return;
+  }
+
   try {
     const { context, rawInput } = await step.run("load", async () => {
       const signal = await prisma.signal.findUniqueOrThrow({
@@ -257,5 +272,6 @@ export async function runPipeline(
         statusReason: err instanceof Error ? err.message : String(err),
       },
     });
+    throw err;
   }
 }

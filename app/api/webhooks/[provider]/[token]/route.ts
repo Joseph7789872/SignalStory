@@ -13,6 +13,20 @@ export const dynamic = "force-dynamic";
 
 const asJson = (v: unknown) => v as Prisma.InputJsonValue;
 
+type ClaimedEvent =
+  | { kind: "duplicate" }
+  | { kind: "filtered" }
+  | { kind: "ingested"; signalId: string; externalId: string };
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "P2002"
+  );
+}
+
 export async function POST(
   req: Request,
   { params }: { params: { provider: string; token: string } },
@@ -55,70 +69,92 @@ export async function POST(
   let events: ProviderEvent[];
   try {
     events = adapter.parse(rawBody, headers);
-  } catch {
-    events = [];
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: "Invalid webhook payload",
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 400 },
+    );
   }
 
   let ingested = 0;
-  for (const event of events) {
-    // Dedup — providers retry; never create the same Signal twice. Scoped per
-    // connection so user-supplied ids (generic webhook) can't collide across orgs.
-    const seen = await prisma.ingestedEvent.findUnique({
-      where: {
-        connectionId_externalId: {
-          connectionId: connection.id,
-          externalId: event.externalId,
-        },
-      },
-    });
-    if (seen) continue;
+  let filtered = 0;
+  let duplicates = 0;
 
-    // Coarse filter — record the event but create no Signal (no LLM cost).
-    if (!adapter.shouldIngest(event, config)) {
-      await prisma.ingestedEvent.create({
+  for (const event of events) {
+    const claim = await prisma.$transaction<ClaimedEvent>(async (tx) => {
+      try {
+        await tx.ingestedEvent.create({
+          data: {
+            connectionId: connection.id,
+            provider: adapter.provider,
+            externalId: event.externalId,
+            signalId: null,
+          },
+        });
+      } catch (err) {
+        if (isUniqueConstraintError(err)) return { kind: "duplicate" };
+        throw err;
+      }
+
+      // Coarse filter - record the event but create no Signal (no LLM cost).
+      if (!adapter.shouldIngest(event, config)) {
+        return { kind: "filtered" };
+      }
+
+      const signal = await tx.signal.create({
         data: {
+          orgId: connection.orgId,
           connectionId: connection.id,
-          provider: adapter.provider,
-          externalId: event.externalId,
-          signalId: null,
+          source: adapter.provider as unknown as SignalSource,
+          rawInput: asJson(adapter.toRawInput(event)),
+          status: "QUEUED",
         },
       });
+      await tx.ingestedEvent.update({
+        where: {
+          connectionId_externalId: {
+            connectionId: connection.id,
+            externalId: event.externalId,
+          },
+        },
+        data: { signalId: signal.id },
+      });
+
+      return { kind: "ingested", signalId: signal.id, externalId: event.externalId };
+    });
+
+    if (claim.kind === "duplicate") {
+      duplicates += 1;
+      continue;
+    }
+    if (claim.kind === "filtered") {
+      filtered += 1;
       continue;
     }
 
-    const signal = await prisma.signal.create({
-      data: {
-        orgId: connection.orgId,
-        connectionId: connection.id,
-        source: adapter.provider as unknown as SignalSource,
-        rawInput: asJson(adapter.toRawInput(event)),
-        status: "QUEUED",
-      },
-    });
-    await prisma.ingestedEvent.create({
-      data: {
-        connectionId: connection.id,
-        provider: adapter.provider,
-        externalId: event.externalId,
-        signalId: signal.id,
-      },
-    });
-
-    // Same trigger as a manual submission — the pipeline is unchanged.
     try {
       await inngest.send({
         name: "signal/submitted",
-        data: { signalId: signal.id },
+        data: { signalId: claim.signalId },
       });
     } catch (err) {
-      await prisma.signal.update({
-        where: { id: signal.id },
-        data: {
-          statusReason:
-            "Queued but not picked up — is the job queue running? " +
-            (err instanceof Error ? err.message : String(err)),
+      // No outbox table yet: remove the claim and signal so provider retry can recover.
+      await prisma.$transaction([
+        prisma.ingestedEvent.deleteMany({
+          where: { connectionId: connection.id, externalId: claim.externalId },
+        }),
+        prisma.signal.deleteMany({ where: { id: claim.signalId } }),
+      ]);
+      return NextResponse.json(
+        {
+          error: "Queued signal could not be dispatched",
+          details: err instanceof Error ? err.message : String(err),
         },
-      });
+        { status: 503 },
+      );
     }
     ingested += 1;
   }
@@ -128,5 +164,5 @@ export async function POST(
     data: { lastEventAt: new Date() },
   });
 
-  return NextResponse.json({ ok: true, ingested });
+  return NextResponse.json({ ok: true, ingested, filtered, duplicates });
 }

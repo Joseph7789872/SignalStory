@@ -27,7 +27,7 @@ export async function runStoryFinder(args: {
   const prompt = await getActivePrompt("story_finder", {
     version: PROMPT_VERSION,
     instruction: INSTRUCTION,
-  });
+  }, args.signalId);
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "story_finder",

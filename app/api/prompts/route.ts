@@ -2,27 +2,36 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { requireAuthContext } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { AGENT_DEFAULTS } from "@/lib/agents/registry";
 
 export const dynamic = "force-dynamic";
 
+function ownerError(e: unknown) {
+  const forbidden = e instanceof Error && e.message === "FORBIDDEN";
+  return NextResponse.json(
+    { error: forbidden ? "Owners only" : "Unauthorized" },
+    { status: forbidden ? 403 : 401 },
+  );
+}
+
 export async function GET() {
   let ctx;
   try {
-    ctx = await requireAuthContext();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    ctx = await requireOwner();
+  } catch (e) {
+    return ownerError(e);
   }
   const orgId = ctx.org.id;
 
   const templates = await prisma.promptTemplate.findMany({
+    where: { orgId },
     orderBy: { createdAt: "desc" },
   });
 
   // Per-version performance (org-scoped): how many runs used a version, and the
-  // human-feedback decisions on signals where that version ran. Approximate — a
-  // signal's feedback reflects all of its agents — but enough to tune by hand.
+  // human-feedback decisions on signals where that version ran. Approximate - a
+  // signal's feedback reflects all of its agents - but enough to tune by hand.
   const runs = await prisma.agentRun.findMany({
     where: { signal: { orgId } },
     select: { promptVersion: true, signalId: true },
@@ -78,18 +87,21 @@ export async function GET() {
   return NextResponse.json({ agents, performance });
 }
 
+const AGENT_VALUES = AGENT_DEFAULTS.map((d) => d.agent) as [string, ...string[]];
+
 const CreateInput = z.object({
-  agent: z.string().min(1),
-  version: z.string().min(1),
-  instruction: z.string().min(10),
+  agent: z.enum(AGENT_VALUES),
+  version: z.string().min(1).max(80),
+  instruction: z.string().min(10).max(40_000),
   activate: z.boolean().optional().default(true),
 });
 
 export async function POST(req: Request) {
+  let ctx;
   try {
-    await requireAuthContext();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    ctx = await requireOwner();
+  } catch (e) {
+    return ownerError(e);
   }
 
   const parsed = CreateInput.safeParse(await req.json().catch(() => null));
@@ -98,31 +110,39 @@ export async function POST(req: Request) {
   }
   const { agent, version, instruction, activate } = parsed.data;
 
-  const created = await prisma.$transaction(async (tx) => {
-    if (activate) {
-      await tx.promptTemplate.updateMany({
-        where: { agent },
-        data: { isActive: false },
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      if (activate) {
+        await tx.promptTemplate.updateMany({
+          where: { orgId: ctx.org.id, agent },
+          data: { isActive: false },
+        });
+      }
+      return tx.promptTemplate.create({
+        data: { orgId: ctx.org.id, agent, version, instruction, isActive: activate },
       });
-    }
-    return tx.promptTemplate.create({
-      data: { agent, version, instruction, isActive: activate },
     });
-  });
 
-  return NextResponse.json({ template: created });
+    return NextResponse.json({ template: created });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "Prompt version already exists for this workspace" },
+      { status: 409 },
+    );
+  }
 }
 
 const ActivateInput = z.object({
-  agent: z.string().min(1),
-  version: z.string().min(1),
+  agent: z.enum(AGENT_VALUES),
+  version: z.string().min(1).max(80),
 });
 
 export async function PUT(req: Request) {
+  let ctx;
   try {
-    await requireAuthContext();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    ctx = await requireOwner();
+  } catch (e) {
+    return ownerError(e);
   }
 
   const parsed = ActivateInput.safeParse(await req.json().catch(() => null));
@@ -131,13 +151,20 @@ export async function PUT(req: Request) {
   }
   const { agent, version } = parsed.data;
 
+  const target = await prisma.promptTemplate.findFirst({
+    where: { orgId: ctx.org.id, agent, version },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "Prompt version not found" }, { status: 404 });
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.promptTemplate.updateMany({
-      where: { agent },
+      where: { orgId: ctx.org.id, agent },
       data: { isActive: false },
     });
-    await tx.promptTemplate.updateMany({
-      where: { agent, version },
+    await tx.promptTemplate.update({
+      where: { id: target.id },
       data: { isActive: true },
     });
   });

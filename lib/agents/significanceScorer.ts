@@ -39,7 +39,7 @@ export async function runSignificanceScorer(args: {
   const prompt = await getActivePrompt("significance_scorer", {
     version: PROMPT_VERSION,
     instruction: INSTRUCTION,
-  });
+  }, args.signalId);
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "significance_scorer",

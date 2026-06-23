@@ -56,12 +56,22 @@ export async function POST(req: Request) {
   }
   const email = parsed.data.email.toLowerCase();
 
-  const alreadyMember = await prisma.user.findFirst({
-    where: { orgId: ctx.org.id, email: { equals: email, mode: "insensitive" } },
+  const existingUser = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { orgId: true },
   });
-  if (alreadyMember) {
+  if (existingUser?.orgId === ctx.org.id) {
     return NextResponse.json(
       { error: "That person is already a member" },
+      { status: 409 },
+    );
+  }
+  if (existingUser) {
+    return NextResponse.json(
+      {
+        error:
+          "That email already belongs to another workspace. Multi-workspace membership is not supported yet.",
+      },
       { status: 409 },
     );
   }

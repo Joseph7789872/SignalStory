@@ -7,9 +7,17 @@ import { requireAuthContext } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 const EntryInput = z.object({
-  kind: z.string().min(1),
-  text: z.string().min(3),
-  source: z.string().optional().default(""),
+  kind: z.enum([
+    "discovery_call",
+    "objection",
+    "testimonial",
+    "review",
+    "churn",
+    "support",
+    "other",
+  ]),
+  text: z.string().min(3).max(5_000),
+  source: z.string().max(500).optional().default(""),
 });
 
 export async function GET() {
@@ -23,6 +31,7 @@ export async function GET() {
   const entries = await prisma.customerVoiceEntry.findMany({
     where: { orgId: ctx.org.id },
     orderBy: { createdAt: "asc" },
+    take: 100,
   });
   return NextResponse.json({ entries });
 }
@@ -37,7 +46,10 @@ export async function POST(req: Request) {
 
   const parsed = EntryInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   const entry = await prisma.customerVoiceEntry.create({

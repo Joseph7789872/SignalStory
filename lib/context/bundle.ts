@@ -29,7 +29,7 @@ export async function buildContextBundle(orgId: string): Promise<string> {
       brandVoice: true,
       editorial: true,
       // Ordered for a stable (cacheable) prefix.
-      customerVoice: { orderBy: { createdAt: "asc" } },
+      customerVoice: { orderBy: { createdAt: "asc" }, take: 100 },
     },
   });
 

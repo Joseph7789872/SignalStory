@@ -7,52 +7,60 @@ import { contextCompleteness } from "@/lib/context/bundle";
 
 export const dynamic = "force-dynamic";
 
+const ShortText = z.string().max(500);
+const MediumText = z.string().max(4_000);
+const SampleText = z.string().max(6_000);
+
 const ContextInput = z.object({
   profile: z
     .object({
-      description: z.string().optional(),
-      icp: z.string().optional(),
-      category: z.string().optional(),
+      description: MediumText.optional(),
+      icp: MediumText.optional(),
+      category: ShortText.optional(),
     })
     .optional(),
   founder: z
     .object({
-      name: z.string().optional(),
-      beliefs: z.array(z.string()).optional(),
+      name: ShortText.optional(),
+      beliefs: z.array(MediumText).max(20).optional(),
       frameworks: z
-        .array(z.object({ name: z.string(), summary: z.string() }))
+        .array(z.object({ name: ShortText, summary: MediumText }))
+        .max(20)
         .optional(),
-      lessons: z.array(z.string()).optional(),
+      lessons: z.array(MediumText).max(30).optional(),
       writingSamples: z
-        .array(z.object({ label: z.string(), text: z.string() }))
+        .array(z.object({ label: ShortText, text: SampleText }))
+        .max(10)
         .optional(),
     })
     .optional(),
   brandVoice: z
     .object({
-      tone: z.string().optional(),
-      sentenceStyle: z.string().optional(),
-      bannedPhrases: z.array(z.string()).optional(),
+      tone: MediumText.optional(),
+      sentenceStyle: MediumText.optional(),
+      bannedPhrases: z.array(z.string().max(200)).max(100).optional(),
       vocabulary: z
         .object({
-          prefer: z.array(z.string()).optional(),
-          avoid: z.array(z.string()).optional(),
+          prefer: z.array(z.string().max(100)).max(100).optional(),
+          avoid: z.array(z.string().max(100)).max(100).optional(),
         })
         .optional(),
-      opinionatedness: z.string().optional(),
-      technicalDepth: z.string().optional(),
+      opinionatedness: ShortText.optional(),
+      technicalDepth: ShortText.optional(),
     })
     .optional(),
   editorial: z
     .object({
       pillars: z
-        .array(z.object({ name: z.string(), description: z.string() }))
+        .array(z.object({ name: ShortText, description: MediumText }))
+        .max(20)
         .optional(),
       audiences: z
-        .array(z.object({ name: z.string(), description: z.string() }))
+        .array(z.object({ name: ShortText, description: MediumText }))
+        .max(20)
         .optional(),
-      goals: z.array(z.string()).optional(),
-      topicsToAvoid: z.array(z.string()).optional(),
+      goals: z.array(MediumText).max(30).optional(),
+      topicsToAvoid: z.array(MediumText).max(100).optional(),
     })
     .optional(),
 });

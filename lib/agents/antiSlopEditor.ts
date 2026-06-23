@@ -33,7 +33,7 @@ export async function runAntiSlopEditor(args: {
   const prompt = await getActivePrompt("anti_slop_editor", {
     version: PROMPT_VERSION,
     instruction: INSTRUCTION,
-  });
+  }, args.signalId);
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "anti_slop_editor",

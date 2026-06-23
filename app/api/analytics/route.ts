@@ -27,6 +27,8 @@ export async function GET() {
     runTotals,
     assetGroups,
     assetSlop,
+    slopPassed,
+    scoredAssets,
     feedbackGroups,
   ] = await Promise.all([
     prisma.signal.count({ where: { orgId } }),
@@ -56,6 +58,16 @@ export async function GET() {
       _avg: { antiSlopScore: true },
       _count: { _all: true },
     }),
+    prisma.contentAsset.count({
+      where: {
+        signal: { orgId },
+        antiSlopScore: { gte: 70 },
+        reviewStatus: { notIn: ["NEEDS_WORK", "REJECTED"] },
+      },
+    }),
+    prisma.contentAsset.count({
+      where: { signal: { orgId }, antiSlopScore: { not: null } },
+    }),
     prisma.feedback.groupBy({
       by: ["decision"],
       where: signalWhere,
@@ -68,11 +80,6 @@ export async function GET() {
   const totalCached = runTotals._sum.cacheReadTokens ?? 0;
   const rejected =
     statusGroups.find((s) => s.status === "REJECTED")?._count ?? 0;
-  const slopPassCount =
-    assetGroups
-      .filter((a) => a.reviewStatus !== "NEEDS_WORK")
-      .reduce((n, a) => n + a._count, 0) ?? 0;
-  const totalAssets = assetSlop._count._all ?? 0;
 
   return NextResponse.json({
     totals: {
@@ -83,7 +90,7 @@ export async function GET() {
       cacheHitPct: totalInput ? (totalCached / totalInput) * 100 : 0,
       gateRejectionPct: signals ? (rejected / signals) * 100 : 0,
       avgAntiSlop: assetSlop._avg.antiSlopScore ?? 0,
-      antiSlopPassPct: totalAssets ? (slopPassCount / totalAssets) * 100 : 0,
+      antiSlopPassPct: scoredAssets ? (slopPassed / scoredAssets) * 100 : 0,
     },
     byAgent: runByAgent
       .map((r) => ({

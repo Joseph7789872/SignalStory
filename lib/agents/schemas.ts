@@ -91,6 +91,11 @@ export const NarrativeBriefSchema = z.object({
 export type NarrativeBrief = z.infer<typeof NarrativeBriefSchema>;
 
 // --- [5] Channel Transformer (per-channel bodies) ---
+// NOTE: these validate Channel Transformer *model output*. OpenAI structured
+// output does NOT hard-enforce maxLength/minItems/pattern — they're only hints —
+// so a hard Zod .max()/.min()/.regex() here turns normal model variance (e.g. a
+// 62-char SEO title) into a pipeline failure. Keep the limits as `.describe()`
+// guidance to the model; do not enforce bounds the provider can't guarantee.
 export const LinkedinFounderSchema = z.object({
   hook: z.string().describe("First line; must earn the scroll-stop"),
   body: z.string().describe("Post body, founder voice, no fluff"),
@@ -106,7 +111,7 @@ export const XThreadSchema = z.object({
 });
 export type XThread = z.infer<typeof XThreadSchema>;
 
-// A COMPLETE, publish-ready blog post — not an outline — with basic on-page SEO
+// A COMPLETE, publish-ready blog post - not an outline - with basic on-page SEO
 // and GEO (generative-engine optimization) metadata so the post is both
 // rankable and extractable/citable by AI answer engines.
 export const BlogPostSchema = z.object({
@@ -131,7 +136,7 @@ export const BlogPostSchema = z.object({
   tldr: z
     .string()
     .describe(
-      "2-3 sentence direct-answer summary at the top — the quotable answer an AI engine can extract (GEO)",
+      "2-3 sentence direct-answer summary at the top - the quotable answer an AI engine can extract (GEO)",
     ),
   bodyMarkdown: z
     .string()
@@ -161,7 +166,6 @@ export const ChannelBundleSchema = z.object({
   blogPost: BlogPostSchema,
 });
 export type ChannelBundle = z.infer<typeof ChannelBundleSchema>;
-
 // Per-channel schema lookup for single-channel regeneration.
 export const CHANNEL_SCHEMA = {
   LINKEDIN_FOUNDER: LinkedinFounderSchema,

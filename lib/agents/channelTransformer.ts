@@ -46,7 +46,7 @@ export async function runChannelTransformer(args: {
   const prompt = await getActivePrompt("channel_transformer", {
     version: PROMPT_VERSION,
     instruction: BUNDLE_INSTRUCTION,
-  });
+  }, args.signalId);
   const { data } = await runAgent({
     signalId: args.signalId,
     agent: "channel_transformer",

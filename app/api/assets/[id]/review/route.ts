@@ -3,13 +3,14 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
+import { CHANNEL_SCHEMA } from "@/lib/agents/schemas";
 
 export const dynamic = "force-dynamic";
 
 const ReviewInput = z.object({
   decision: z.enum(["APPROVE", "EDIT", "REJECT"]),
   editedBody: z.unknown().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(2_000).optional(),
 });
 
 const STATUS = {
@@ -43,13 +44,24 @@ export async function POST(
 
   const { decision, editedBody, notes } = parsed.data;
 
+  let validatedEdit: unknown = editedBody;
+  if (decision === "EDIT") {
+    const schema = CHANNEL_SCHEMA[asset.channel];
+    const edit = schema.safeParse(editedBody);
+    if (!edit.success) {
+      return NextResponse.json(
+        { error: "Invalid edited body", details: edit.error.flatten() },
+        { status: 400 },
+      );
+    }
+    validatedEdit = edit.data;
+  }
+
   const updated = await prisma.contentAsset.update({
     where: { id: asset.id },
     data: {
       reviewStatus: STATUS[decision],
-      ...(decision === "EDIT" && editedBody !== undefined
-        ? { editedBody: editedBody as object }
-        : {}),
+      ...(decision === "EDIT" ? { editedBody: validatedEdit as object } : {}),
     },
   });
 
