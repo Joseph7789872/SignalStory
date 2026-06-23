@@ -11,6 +11,8 @@ import {
   regenerateChannel,
 } from "@/lib/agents/channelTransformer";
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
+import { retrieveProof } from "@/lib/knowledge/retrieve";
+import { EMBEDDING_MODEL, estimateEmbeddingCostUsd } from "@/lib/agents/embeddings";
 import type {
   ChannelBundle,
   EvidencePacket,
@@ -110,6 +112,38 @@ export async function runPipeline(
       return evidence;
     });
 
+    // [R] Retrieve proof from the org's memory store (Company Knowledge RAG).
+    // Volatile per-signal input — NOT folded into the cached context prefix, so
+    // prompt caching of `context` is preserved. Degrades to "" on an empty store.
+    const proofBlock = await step.run("retrieve", async () => {
+      const signal = await prisma.signal.findUniqueOrThrow({
+        where: { id: signalId },
+        select: { orgId: true },
+      });
+      const query = `${evidence.summary}\n${evidence.facts.join("\n")}`;
+      const { block, sources, tokens } = await retrieveProof(signal.orgId, query);
+      await prisma.signal.update({
+        where: { id: signalId },
+        data: { retrievedProof: asJson(sources) },
+      });
+      // Log the embedding cost as an AgentRun so it rolls into the per-run total.
+      if (tokens > 0) {
+        await prisma.agentRun.create({
+          data: {
+            signalId,
+            agent: "retriever",
+            model: `openai:${EMBEDDING_MODEL}`,
+            promptVersion: "retriever.v1",
+            inputTokens: tokens,
+            costUsd: estimateEmbeddingCostUsd(tokens),
+            status: "ok",
+          },
+        });
+        await settleCost(signalId);
+      }
+      return block;
+    });
+
     // [2] Significance Scorer — the gate
     const gate = await step.run("score", async () => {
       await prisma.signal.update({
@@ -120,6 +154,7 @@ export async function runPipeline(
         signalId,
         context,
         evidence,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },
@@ -157,6 +192,7 @@ export async function runPipeline(
         context,
         evidence,
         score,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },
@@ -177,6 +213,7 @@ export async function runPipeline(
         context,
         evidence,
         angles,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },

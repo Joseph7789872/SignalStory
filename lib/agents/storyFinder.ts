@@ -23,6 +23,7 @@ export async function runStoryFinder(args: {
   context: string;
   evidence: EvidencePacket;
   score: SignalScore;
+  retrieved?: string;
 }): Promise<StoryAngles> {
   const prompt = await getActivePrompt("story_finder", {
     version: PROMPT_VERSION,
@@ -37,7 +38,8 @@ export async function runStoryFinder(args: {
     instruction: prompt.instruction,
     input:
       `Evidence Packet:\n${JSON.stringify(args.evidence, null, 2)}\n\n` +
-      `Significance assessment:\n${JSON.stringify(args.score, null, 2)}`,
+      `Significance assessment:\n${JSON.stringify(args.score, null, 2)}` +
+      (args.retrieved ? `\n\n${args.retrieved}` : ""),
     schema: StoryAnglesSchema,
     maxTokens: 3072,
   });

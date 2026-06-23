@@ -36,6 +36,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Integrations
             </Link>
             <Link
+              href="/knowledge"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Knowledge
+            </Link>
+            <Link
               href="/analytics"
               className="text-muted-foreground hover:text-foreground"
             >

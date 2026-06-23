@@ -14,6 +14,23 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge, isTerminalStatus } from "@/components/signal/status-badge";
 import { AssetCard } from "@/components/signal/asset-card";
 
+type ProofSource = {
+  id: string;
+  chunkId: string;
+  docId: string;
+  title: string;
+  sourceUrl: string | null;
+  kind: string;
+  excerpt: string;
+  score: number;
+};
+
+type CitedClaim = {
+  claim: string;
+  sourceIds: string[];
+  supported: boolean;
+};
+
 type Signal = {
   id: string;
   status: string;
@@ -22,6 +39,7 @@ type Signal = {
   scoreDetail: any;
   storyAngles: any;
   narrativeBrief: any;
+  retrievedProof: any;
   costUsd: number;
   rawInput: any;
   assets: any[];
@@ -195,6 +213,84 @@ export default function SignalDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Proof library */}
+      {Array.isArray(signal.retrievedProof) && signal.retrievedProof.length > 0 && (() => {
+        const proof = signal.retrievedProof as ProofSource[];
+        const claims: CitedClaim[] = Array.isArray(brief?.citedClaims) ? brief.citedClaims : [];
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Proof library</CardTitle>
+              <CardDescription>
+                Sources from your company knowledge used to ground this story.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="space-y-2">
+                {proof.map((src) => (
+                  <div key={src.id} className="rounded-lg border p-3 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs rounded bg-muted px-1.5 py-0.5">
+                        [{src.id}]
+                      </span>
+                      {src.sourceUrl ? (
+                        <a
+                          href={src.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium hover:underline"
+                        >
+                          {src.title}
+                        </a>
+                      ) : (
+                        <span className="font-medium">{src.title}</span>
+                      )}
+                      <Badge variant="outline">
+                        {src.kind.toLowerCase().replace(/_/g, " ")}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {Math.round(src.score * 100)}% match
+                      </span>
+                    </div>
+                    {src.excerpt && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {src.excerpt}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {claims.length > 0 && (
+                <div className="space-y-2">
+                  <p className="font-medium">Cited claims</p>
+                  {claims.map((c, i) => (
+                    <div key={i} className="flex flex-wrap items-start gap-2 rounded-lg border p-3">
+                      <span className="flex-1">{c.claim}</span>
+                      <div className="flex flex-wrap items-center gap-1 shrink-0">
+                        {c.sourceIds.map((sid) => (
+                          <span
+                            key={sid}
+                            className="font-mono text-xs rounded bg-muted px-1.5 py-0.5"
+                          >
+                            [{sid}]
+                          </span>
+                        ))}
+                        {!c.supported && (
+                          <Badge variant="destructive" className="text-xs">
+                            unsupported
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Assets */}
       {signal.assets?.length > 0 && (

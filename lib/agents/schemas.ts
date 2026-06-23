@@ -87,6 +87,25 @@ export const NarrativeBriefSchema = z.object({
   positioning: z
     .string()
     .describe("How this advances the company's positioning"),
+  citedClaims: z
+    .array(
+      z.object({
+        claim: z.string().describe("A key factual claim made in the brief"),
+        sourceIds: z
+          .array(z.string())
+          .describe(
+            'Citation ids from RETRIEVED PROOF that back this claim, e.g. ["S1","S3"]. Empty if none.',
+          ),
+        supported: z
+          .boolean()
+          .describe(
+            "True ONLY if at least one retrieved source genuinely backs the claim",
+          ),
+      }),
+    )
+    .describe(
+      "Key claims grounded in the retrieved proof. Cite real source ids; mark supported=false for any claim no retrieved source backs (do not invent citations). Empty array if no proof was retrieved.",
+    ),
 });
 export type NarrativeBrief = z.infer<typeof NarrativeBriefSchema>;
 
