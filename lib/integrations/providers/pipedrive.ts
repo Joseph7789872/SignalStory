@@ -12,20 +12,26 @@ import type {
 // case is a deal moving to "won", caught by `updated.deal` + the wonDealsOnly filter.
 const DEFAULT_EVENTS = ["updated.deal", "added.deal"];
 
-/** Verify Pipedrive's `x-pipedrive-signature`: HMAC-SHA256(secret, rawBody) hex. */
-function verify({ rawBody, headers, secret }: VerifyArgs): boolean {
-  const header =
-    headers["x-pipedrive-signature"] ?? headers["X-Pipedrive-Signature"];
-  if (!header) return false;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-  try {
-    return crypto.timingSafeEqual(Buffer.from(header), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+/** Constant-time compare that tolerates length mismatch. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+/**
+ * Pipedrive webhooks authenticate with HTTP Basic Auth (username + password set
+ * on the webhook), not an HMAC signature — it sends `Authorization: Basic
+ * base64(user:pass)`. We store the connection secret as the literal "user:pass"
+ * and compare against the reconstructed header. The unguessable URL token is the
+ * second factor.
+ */
+function verify({ headers, secret }: VerifyArgs): boolean {
+  const auth = headers["authorization"] ?? headers["Authorization"];
+  if (!auth) return false;
+  const expected = "Basic " + Buffer.from(secret).toString("base64");
+  return safeEqual(auth, expected);
 }
 
 // The changed object lives at `current` (v1) or `data` (v2).
@@ -33,14 +39,31 @@ function dealObject(body: any): any {
   return body?.current ?? body?.data ?? {};
 }
 
+// Normalize v2 action names (change/create/delete) to the v1 vocabulary so the
+// canonical type is version-independent.
+const ACTION_ALIASES: Record<string, string> = {
+  change: "updated",
+  updated: "updated",
+  create: "added",
+  added: "added",
+  delete: "deleted",
+  deleted: "deleted",
+};
+
 function parse(rawBody: string, _headers: Record<string, string>): ProviderEvent[] {
   const body = JSON.parse(rawBody);
   const meta = body?.meta ?? {};
   // Stable per-delivery id (NOT meta.webhook_id, which is constant per webhook).
-  const externalId = meta.id != null ? String(meta.id) : null;
-  if (externalId == null) return [];
+  // v2 may use correlation_id; fall back to a body hash so we never drop an event.
+  const externalId = String(
+    meta.id ??
+      meta.correlation_id ??
+      crypto.createHash("sha256").update(rawBody).digest("hex"),
+  );
   const object = meta.object ?? meta.entity ?? "";
-  const type = body.event ?? (meta.action ? `${meta.action}.${object}` : object);
+  const action = ACTION_ALIASES[meta.action] ?? meta.action ?? "";
+  // Canonical type, e.g. "updated.deal", regardless of webhook version.
+  const type = object && action ? `${action}.${object}` : (body.event ?? object);
   return [{ externalId, type, data: body }];
 }
 

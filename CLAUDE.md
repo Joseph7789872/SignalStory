@@ -90,13 +90,18 @@ mark NEEDS_WORK). A per-run cost guardrail (`settleCost`) aborts to FAILED past
 Third-party events become Signals that ride the identical `signal/submitted`
 path — agents and orchestrator are untouched. `lib/integrations/` mirrors the
 LLM provider layer: `types.ts` (the `IntegrationProviderAdapter` interface),
-`providers/{pipedrive,attio,linear,github,webhook}.ts` (each: `verify` signature,
+`providers/{pipedrive,attio,linear,github,webhook}.ts` (each: `verify` auth,
 `parse` → events, `shouldIngest` coarse filter, `toRawInput` → the Signal
-rawInput shape), and `registry.ts`. Pipedrive/Attio/Linear/GitHub verify a native
-HMAC of the raw body; the generic **`webhook`** adapter (for Zapier/Make piping in
-HubSpot/Salesforce/Gong/Slack/etc.) has no provider HMAC, so it authenticates with
-the unguessable URL token **+ a user-chosen shared bearer secret** and maps a
-documented `{title,description,evidence,links,externalId}` contract. The public,
+rawInput shape), and `registry.ts`. Per-provider auth (confirmed against live
+traffic): **Attio/Linear/GitHub** verify a native HMAC of the raw body (GitHub
+also accepts its default `application/x-www-form-urlencoded` `payload=` body);
+**Pipedrive** uses **HTTP Basic Auth** (the connection `secret` is stored as
+`user:pass`), not an HMAC; the generic **`webhook`** adapter (for Zapier/Make
+piping in HubSpot/Salesforce/Gong/Slack/etc.) has no provider signature, so it
+authenticates with the unguessable URL token **+ a user-chosen shared bearer
+secret** and maps a documented `{title,description,evidence,links,externalId}`
+contract. Connection signing secrets are editable after creation (PATCH
+`secret`) since Attio/Linear only reveal theirs once the webhook exists. The public,
 signature-verified route `app/api/webhooks/[provider]/[token]/route.ts` resolves
 the connection by its unguessable `webhookToken`, verifies, dedups via
 `IngestedEvent` (`@@unique([connectionId, externalId])` — per-connection so

@@ -8,7 +8,7 @@ import type {
   VerifyArgs,
 } from "../types";
 
-const DEFAULT_EVENTS = ["record.updated", "list-entry.created"];
+const DEFAULT_EVENTS = ["record.created", "record.updated", "list-entry.created"];
 
 /** Verify Attio's `attio-signature`: HMAC-SHA256(secret, rawBody) hex. */
 function verify({ rawBody, headers, secret }: VerifyArgs): boolean {
@@ -62,6 +62,9 @@ function toRawInput(event: ProviderEvent): SignalRawInput {
   if (event.type === "list-entry.created") {
     title = `New CRM list entry added`;
     description = `A record was added to a list in Attio — often a new qualified lead or deal.`;
+  } else if (event.type === "record.created") {
+    title = `New CRM record created`;
+    description = `A new record was created in Attio (e.g. a new company, person, or deal).`;
   } else if (event.type === "record.updated") {
     title = `CRM record updated`;
     description = `A record was updated in Attio (e.g. a deal advanced or a company changed).`;

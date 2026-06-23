@@ -108,6 +108,9 @@ const PatchInput = z.object({
   id: z.string(),
   status: z.enum(["ACTIVE", "PAUSED"]).optional(),
   config: ConfigInput.optional(),
+  // Some providers (Attio, Linear) generate the signing secret only after the
+  // webhook is created, so the secret must be settable after the fact.
+  secret: z.string().min(8).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -122,13 +125,14 @@ export async function PATCH(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  const { id, status, config } = parsed.data;
+  const { id, status, config, secret } = parsed.data;
 
   await prisma.integrationConnection.updateMany({
     where: { id, orgId: ctx.org.id },
     data: {
       ...(status ? { status } : {}),
       ...(config ? { config: config as Prisma.InputJsonValue } : {}),
+      ...(secret ? { secret: encryptSecret(secret) } : {}),
     },
   });
   return NextResponse.json({ ok: true });

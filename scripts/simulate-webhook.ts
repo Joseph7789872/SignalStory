@@ -14,7 +14,7 @@ import { prisma } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const PD_SECRET = "pd_sim_sign_key";
+const PD_SECRET = "signalstory:pd_sim_pass"; // Pipedrive Basic Auth user:pass
 const WH_SECRET = "wh_sim_shared_secret_long";
 const ORG_SLUG = "ingest-test-org";
 
@@ -24,9 +24,9 @@ const check = (name: string, cond: boolean, extra = "") => {
   if (!cond) failures++;
 };
 
-function pipedriveHeaders(body: string): Record<string, string> {
-  const sig = crypto.createHmac("sha256", PD_SECRET).update(body).digest("hex");
-  return { "content-type": "application/json", "x-pipedrive-signature": sig };
+function pipedriveHeaders(_body: string): Record<string, string> {
+  const auth = "Basic " + Buffer.from(PD_SECRET).toString("base64");
+  return { "content-type": "application/json", authorization: auth };
 }
 
 function dealEvent(id: string, status: "won" | "open"): string {
@@ -120,9 +120,9 @@ async function main() {
 
   const bad = await post("pipedrive", pdToken, won, {
     "content-type": "application/json",
-    "x-pipedrive-signature": "deadbeef",
+    authorization: "Basic " + Buffer.from("signalstory:wrongpass").toString("base64"),
   });
-  check("bad signature rejected (401)", bad.status === 401);
+  check("bad basic auth rejected (401)", bad.status === 401);
 
   console.log(`\n=== Generic Webhook (POST ${BASE}/api/webhooks/webhook/${whToken}) ===`);
   const evt = JSON.stringify({

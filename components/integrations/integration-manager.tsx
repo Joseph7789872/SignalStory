@@ -20,7 +20,7 @@ type Connection = {
 };
 
 const SECRET_HELP: Record<string, string> = {
-  PIPEDRIVE: "Pipedrive → Tools & integrations → Webhooks → copy the signature key",
+  PIPEDRIVE: 'Enter "username:password" — the same HTTP Auth username + password you set on the Pipedrive webhook',
   ATTIO: "Attio → Workspace → Developers → your integration → Webhooks secret",
   LINEAR: "Linear → Settings → API → Webhooks → signing secret",
   GITHUB: "The secret you set when creating the GitHub webhook",
@@ -44,6 +44,56 @@ function CopyField({ value }: { value: string }) {
         }}
       >
         {copied ? "Copied!" : "Copy"}
+      </Button>
+    </div>
+  );
+}
+
+// Update a connection's signing secret after the fact — needed for providers
+// (Attio, Linear) that generate the secret only once the webhook is created.
+function SecretUpdater({
+  busy,
+  onSave,
+}: {
+  busy: boolean;
+  onSave: (secret: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("");
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="text-xs text-muted-foreground underline"
+        onClick={() => setOpen(true)}
+      >
+        Update signing secret
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <Input
+        type="password"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder="paste the secret the provider generated"
+        className="h-8 text-xs"
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy || val.length < 8}
+        onClick={() => {
+          onSave(val);
+          setVal("");
+          setOpen(false);
+        }}
+      >
+        Save
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        Cancel
       </Button>
     </div>
   );
@@ -123,6 +173,18 @@ export function IntegrationManager() {
     if (!window.confirm("Disconnect this integration?")) return;
     setBusy(true);
     await fetch(`/api/integrations?id=${id}`, { method: "DELETE" });
+    await load();
+    setBusy(false);
+  }
+
+  async function updateSecret(id: string, newSecret: string) {
+    if (newSecret.length < 8) return;
+    setBusy(true);
+    await fetch("/api/integrations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, secret: newSecret }),
+    });
     await load();
     setBusy(false);
   }
@@ -264,6 +326,9 @@ export function IntegrationManager() {
                   </p>
                   <CopyField value={c.webhookUrl} />
                 </div>
+              )}
+              {isOwner && (
+                <SecretUpdater busy={busy} onSave={(s) => updateSecret(c.id, s)} />
               )}
               {isOwner && (
                 <div className="flex gap-2 pt-1">

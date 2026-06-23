@@ -116,22 +116,26 @@ check(
 // --- Integration adapters (V3) ---
 console.log("\nIntegration adapters:");
 
-// Pipedrive: sign a canned won-deal update, verify roundtrip + tamper, parse, won-filter, map.
+// Pipedrive: HTTP Basic Auth (user:pass), verify accept/reject, parse, won-filter, map.
 {
-  const secret = "pd_sign_key";
+  const secret = "signalstory:pd_pass_123"; // stored as "user:pass"
   const wonBody = JSON.stringify({
     event: "updated.deal",
     meta: { id: "pd_evt_1", action: "updated", object: "deal", webhook_id: "wh_99" },
     current: { title: "Acme Corp", value: 48000, currency: "USD", status: "won" },
     previous: { status: "open" },
   });
-  const sig = crypto.createHmac("sha256", secret).update(wonBody).digest("hex");
-  const headers = { "x-pipedrive-signature": sig };
+  const auth = "Basic " + Buffer.from(secret).toString("base64");
+  const headers = { authorization: auth };
 
-  check("pipedrive verify accepts a valid signature", pipedriveAdapter.verify({ rawBody: wonBody, headers, secret }));
+  check("pipedrive verify accepts valid basic auth", pipedriveAdapter.verify({ rawBody: wonBody, headers, secret }));
   check(
-    "pipedrive verify rejects a tampered body",
-    !pipedriveAdapter.verify({ rawBody: wonBody + " ", headers, secret }),
+    "pipedrive verify rejects wrong basic auth",
+    !pipedriveAdapter.verify({ rawBody: wonBody, headers: { authorization: "Basic " + Buffer.from("signalstory:wrong").toString("base64") }, secret }),
+  );
+  check(
+    "pipedrive verify rejects missing auth",
+    !pipedriveAdapter.verify({ rawBody: wonBody, headers: {}, secret }),
   );
   const events = pipedriveAdapter.parse(wonBody, headers);
   check(
@@ -149,6 +153,18 @@ console.log("\nIntegration adapters:");
   check("pipedrive shouldIngest can allow non-won when wonDealsOnly=false", pipedriveAdapter.shouldIngest(openEvent, { wonDealsOnly: false }));
   const raw = pipedriveAdapter.toRawInput(events[0]);
   check("pipedrive toRawInput names the deal + value", raw.title.includes("Acme Corp") && raw.evidence.includes("48,000"));
+
+  // v2 shape: action "change", object under meta.entity + data — normalized to "updated.deal".
+  const v2Body = JSON.stringify({
+    meta: { id: "pd_v2_1", action: "change", entity: "deal", correlation_id: "corr-1" },
+    data: { title: "Globex", value: 90000, currency: "USD", status: "won" },
+    previous: { status: "open" },
+  });
+  const v2 = pipedriveAdapter.parse(v2Body, {})[0];
+  check(
+    "pipedrive parse normalizes v2 change.deal → updated.deal (won)",
+    v2.type === "updated.deal" && v2.externalId === "pd_v2_1" && pipedriveAdapter.shouldIngest(v2, {}),
+  );
 }
 
 // Attio: sign a canned record.updated, verify, parse (id from Idempotency-Key header), map.
@@ -245,6 +261,19 @@ console.log("\nIntegration adapters:");
   check("github shouldIngest passes release.published", githubAdapter.shouldIngest(events[0], {}));
   const raw = githubAdapter.toRawInput(events[0]);
   check("github toRawInput names the version", raw.title.includes("v2.3.0"));
+
+  // GitHub's DEFAULT content type is form-urlencoded (payload=<urlencoded JSON>).
+  const formBody = "payload=" + encodeURIComponent(body);
+  const formHeaders = {
+    "content-type": "application/x-www-form-urlencoded",
+    "x-github-event": "release",
+    "x-github-delivery": "deliv-2",
+  };
+  const formEvents = githubAdapter.parse(formBody, formHeaders);
+  check(
+    "github parse handles form-urlencoded payload (GitHub default)",
+    formEvents.length === 1 && formEvents[0].type === "release.published",
+  );
 }
 
 if (failures > 0) {

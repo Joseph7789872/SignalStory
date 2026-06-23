@@ -31,7 +31,16 @@ function parse(rawBody: string, headers: Record<string, string>): ProviderEvent[
   const delivery =
     headers["x-github-delivery"] ?? headers["X-GitHub-Delivery"];
   if (!ghEvent || !delivery) return [];
-  const body = JSON.parse(rawBody);
+  // GitHub's DEFAULT content type is application/x-www-form-urlencoded, which
+  // delivers the JSON as `payload=<urlencoded>`. Accept that and raw JSON alike.
+  const ct = headers["content-type"] ?? headers["Content-Type"] ?? "";
+  let json = rawBody;
+  if (ct.includes("application/x-www-form-urlencoded") || rawBody.startsWith("payload=")) {
+    const payload = new URLSearchParams(rawBody).get("payload");
+    if (!payload) return [];
+    json = payload;
+  }
+  const body = JSON.parse(json);
   const type = body?.action ? `${ghEvent}.${body.action}` : ghEvent;
   return [{ externalId: delivery, type, data: body }];
 }
