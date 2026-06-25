@@ -1,5 +1,8 @@
 import { inngest } from "./client";
 import { runPipeline, type StepRunner } from "@/lib/pipeline/orchestrator";
+import { prisma } from "@/lib/db";
+import { sendEmail } from "@/lib/email";
+import { contentReadyEmail } from "@/lib/email/templates";
 
 /**
  * Durable pipeline runner. Each agent stage in `runPipeline` is wrapped in
@@ -14,8 +17,39 @@ export const runPipelineFn = inngest.createFunction(
     const runner: StepRunner = {
       run: (id, fn) => step.run(id, fn as () => Promise<unknown>) as never,
     };
-    await runPipeline(event.data.signalId as string, runner);
-    return { signalId: event.data.signalId };
+    const signalId = event.data.signalId as string;
+    await runPipeline(signalId, runner);
+
+    // Notify the human author when content is ready to review. Durable + once
+    // (memoized step); skipped for auto-ingested signals (no userId) and when
+    // the run didn't reach READY. Best-effort — sendEmail never throws.
+    await step.run("notify-content-ready", async () => {
+      const signal = await prisma.signal.findUnique({
+        where: { id: signalId },
+        select: {
+          status: true,
+          rawInput: true,
+          user: { select: { email: true } },
+          _count: { select: { assets: true } },
+        },
+      });
+      if (signal?.status === "READY" && signal.user?.email) {
+        const title =
+          (signal.rawInput as { title?: string } | null)?.title ?? "Your signal";
+        await sendEmail({
+          to: signal.user.email,
+          ...contentReadyEmail({
+            signalId,
+            title,
+            assetCount: signal._count.assets,
+          }),
+        });
+        return { notified: true };
+      }
+      return { notified: false };
+    });
+
+    return { signalId };
   },
 );
 
