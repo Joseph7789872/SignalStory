@@ -39,6 +39,7 @@ model Organization {
   signals   Signal[]
   promptTemplates PromptTemplate[]
   memoryDocs MemoryDoc[]
+  subscription Subscription?
 }
 
 enum InviteStatus {
@@ -85,6 +86,27 @@ model User {
   feedback  Feedback[]
 
   @@index([orgId])
+}
+
+// --- Billing (V_Phase1) ---
+
+// One row per org (provisioned FREE on first sign-in by getOrCreateAuthContext).
+// Stripe is the source of truth for paid state; the webhook upserts plan/status/
+// period here. `plan` is a PlanId string (see lib/billing/plans.ts); quota +
+// hard spend cap are derived from the plan, not stored.
+model Subscription {
+  id                   String    @id @default(cuid())
+  orgId                String    @unique
+  plan                 String    @default("FREE") // PlanId: FREE | STARTER | PRO
+  status               String    @default("active") // active | past_due | canceled
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  currentPeriodStart   DateTime  @default(now())
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
 // --- Context layer (the moat) ---

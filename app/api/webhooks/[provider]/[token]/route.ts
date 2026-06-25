@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/integrations/registry";
 import { decryptSecret } from "@/lib/crypto";
 import { inngest } from "@/lib/inngest/client";
+import { rateLimit } from "@/lib/ratelimit";
+import { getUsage } from "@/lib/billing/quota";
 import type { ConnectionConfig, ProviderEvent } from "@/lib/integrations/types";
 
 // Public (NOT auth-gated): third parties POST here with no Supabase session.
@@ -16,7 +18,15 @@ const asJson = (v: unknown) => v as Prisma.InputJsonValue;
 type ClaimedEvent =
   | { kind: "duplicate" }
   | { kind: "filtered" }
+  | { kind: "quota_rejected" }
   | { kind: "ingested"; signalId: string; externalId: string };
+
+/** Best-effort client IP for the flood guard. */
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0]!.trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
 
 function isUniqueConstraintError(err: unknown): boolean {
   return (
@@ -45,6 +55,15 @@ export async function POST(
   });
   if (!connection) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Flood guard: per connection + source IP (no-op unless Upstash is configured).
+  const rl = await rateLimit(`webhook:${connection.id}:${clientIp(req)}`, "webhook");
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: rl.retryAfter },
+      { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
   }
 
   // Read the RAW body (needed for signature verification) + lowercased headers.
@@ -79,9 +98,16 @@ export async function POST(
     );
   }
 
+  // Quota gate (coarse, evaluated once for this delivery): when the org is over
+  // its plan, still record events for dedup integrity but create the Signal as
+  // REJECTED and never enqueue it — auto-ingested signals have no human to prompt.
+  const usage = await getUsage(connection.orgId);
+  const quotaBlocked = usage.overSignalQuota || usage.overSpendCap;
+
   let ingested = 0;
   let filtered = 0;
   let duplicates = 0;
+  let rejected = 0;
 
   for (const event of events) {
     const claim = await prisma.$transaction<ClaimedEvent>(async (tx) => {
@@ -110,7 +136,8 @@ export async function POST(
           connectionId: connection.id,
           source: adapter.provider as unknown as SignalSource,
           rawInput: asJson(adapter.toRawInput(event)),
-          status: "QUEUED",
+          status: quotaBlocked ? "REJECTED" : "QUEUED",
+          statusReason: quotaBlocked ? "Monthly quota reached" : null,
         },
       });
       await tx.ingestedEvent.update({
@@ -123,7 +150,9 @@ export async function POST(
         data: { signalId: signal.id },
       });
 
-      return { kind: "ingested", signalId: signal.id, externalId: event.externalId };
+      return quotaBlocked
+        ? { kind: "quota_rejected" }
+        : { kind: "ingested", signalId: signal.id, externalId: event.externalId };
     });
 
     if (claim.kind === "duplicate") {
@@ -132,6 +161,11 @@ export async function POST(
     }
     if (claim.kind === "filtered") {
       filtered += 1;
+      continue;
+    }
+    if (claim.kind === "quota_rejected") {
+      // Signal persisted as REJECTED above; do not enqueue (no LLM cost).
+      rejected += 1;
       continue;
     }
 
@@ -164,5 +198,5 @@ export async function POST(
     data: { lastEventAt: new Date() },
   });
 
-  return NextResponse.json({ ok: true, ingested, filtered, duplicates });
+  return NextResponse.json({ ok: true, ingested, filtered, duplicates, rejected });
 }

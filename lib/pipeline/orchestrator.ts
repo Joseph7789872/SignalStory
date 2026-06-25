@@ -12,6 +12,7 @@ import {
 } from "@/lib/agents/channelTransformer";
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
 import { retrieveProof } from "@/lib/knowledge/retrieve";
+import { isOverSpendCap } from "@/lib/billing/quota";
 import { EMBEDDING_MODEL, estimateEmbeddingCostUsd } from "@/lib/agents/embeddings";
 import type {
   ChannelBundle,
@@ -92,6 +93,29 @@ export async function runPipeline(
   }
 
   try {
+    // Defense-in-depth: if the org was already over its per-period hard spend
+    // cap before this signal started, don't burn more LLM budget. Wrapped in a
+    // step so it's evaluated once at the true start (not on every Inngest
+    // re-invocation, which would otherwise strand a signal once its own cost
+    // tipped the org over the cap). Complements the per-run settleCost guardrail.
+    const overCap = await step.run("spend-cap-check", async () => {
+      const sig = await prisma.signal.findUnique({
+        where: { id: signalId },
+        select: { orgId: true },
+      });
+      return sig ? await isOverSpendCap(sig.orgId) : false;
+    });
+    if (overCap) {
+      await prisma.signal.update({
+        where: { id: signalId },
+        data: {
+          status: "FAILED",
+          statusReason: "Organization monthly spend cap reached",
+        },
+      });
+      return;
+    }
+
     const { context, rawInput } = await step.run("load", async () => {
       const signal = await prisma.signal.findUniqueOrThrow({
         where: { id: signalId },

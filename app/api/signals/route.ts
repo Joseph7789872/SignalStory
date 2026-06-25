@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
+import { rateLimit } from "@/lib/ratelimit";
+import { assertWithinQuota, QuotaExceededError } from "@/lib/billing/quota";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,28 @@ export async function POST(req: Request) {
     ctx = await requireAuthContext();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Per-org submission rate limit (no-op unless Upstash is configured).
+  const rl = await rateLimit(`signals:${ctx.org.id}`, "signals");
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: rl.retryAfter },
+      { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
+  }
+
+  // Hard quota block: signals/month + per-period spend cap (see lib/billing/quota).
+  try {
+    await assertWithinQuota(ctx.org.id);
+  } catch (e) {
+    if (e instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "Monthly quota reached", usage: e.usage },
+        { status: 402 },
+      );
+    }
+    throw e;
   }
 
   const parsed = SignalInput.safeParse(await req.json().catch(() => null));
