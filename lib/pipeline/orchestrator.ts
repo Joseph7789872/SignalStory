@@ -13,6 +13,7 @@ import {
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
 import { retrieveProof } from "@/lib/knowledge/retrieve";
 import { isOverSpendCap } from "@/lib/billing/quota";
+import { logError } from "@/lib/log";
 import { EMBEDDING_MODEL, estimateEmbeddingCostUsd } from "@/lib/agents/embeddings";
 import type {
   ChannelBundle,
@@ -333,6 +334,7 @@ export async function runPipeline(
       });
     });
   } catch (err) {
+    logError("pipeline", err, { signalId });
     await prisma.signal.update({
       where: { id: signalId },
       data: {

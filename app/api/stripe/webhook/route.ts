@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { getStripe, isBillingConfigured } from "@/lib/billing/stripe";
 import { planForPriceId } from "@/lib/billing/plans";
+import { logError } from "@/lib/log";
 
 // Public route (no auth context) — authenticated by the Stripe signature, so it
 // MUST stay out of the middleware PROTECTED regex, like /api/webhooks/*. Reads
@@ -93,27 +94,33 @@ export async function POST(req: Request) {
     );
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const subId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
-      if (subId) {
-        const sub = await stripe.subscriptions.retrieve(subId);
-        await syncSubscription(sub);
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const subId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id;
+        if (subId) {
+          const sub = await stripe.subscriptions.retrieve(subId);
+          await syncSubscription(sub);
+        }
+        break;
       }
-      break;
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        await syncSubscription(event.data.object as Stripe.Subscription);
+        break;
+      }
+      default:
+        break; // ignore unhandled event types
     }
-    case "customer.subscription.created":
-    case "customer.subscription.updated":
-    case "customer.subscription.deleted": {
-      await syncSubscription(event.data.object as Stripe.Subscription);
-      break;
-    }
-    default:
-      break; // ignore unhandled event types
+  } catch (err) {
+    // Return 500 so Stripe retries the delivery; capture for triage.
+    logError("stripe-webhook", err, { eventType: event.type, eventId: event.id });
+    return NextResponse.json({ error: "Handler error" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

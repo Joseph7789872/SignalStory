@@ -6,6 +6,7 @@ import { requireAuthContext } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
 import { rateLimit } from "@/lib/ratelimit";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/billing/quota";
+import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
       data: { signalId: signal.id },
     });
   } catch (err) {
+    logError("signals.enqueue", err, { signalId: signal.id });
     await prisma.signal.update({
       where: { id: signal.id },
       data: {
