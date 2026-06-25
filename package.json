@@ -12,6 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "test": "tsx scripts/test-schemas.ts",
+    "test:unit": "tsx scripts/test-unit.ts",
+    "test:isolation": "tsx scripts/test-isolation.ts",
     "test:e2e": "tsx scripts/test-pipeline.ts",
     "postinstall": "prisma generate"
   },
@@ -31,6 +33,7 @@
     "clsx": "^2.1.0",
     "inngest": "^4.7.0",
     "lucide-react": "^0.344.0",
+    "marked": "^18.0.5",
     "next": "14.2.5",
     "openai": "^4.67.0",
     "react": "18.3.1",

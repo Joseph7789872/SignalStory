@@ -12,6 +12,14 @@ import {
 } from "@/components/ui/card";
 import { AssetEditor } from "@/components/signal/asset-editor";
 import { buildBlogJsonLd } from "@/lib/seo/jsonld";
+import {
+  toPlainText,
+  toMarkdown,
+  toHtml,
+  exportFilename,
+  type ChannelKey,
+} from "@/lib/content/serialize";
+import { downloadFile } from "@/lib/content/download";
 
 const CHANNEL_LABEL: Record<string, string> = {
   LINKEDIN_FOUNDER: "LinkedIn — founder post",
@@ -164,6 +172,131 @@ function JsonLdBlock({ body }: { body: any }) {
         </pre>
       </div>
     </details>
+  );
+}
+
+/** Copy / export / schedule toolbar — available for any asset regardless of
+ *  review status. Copy + export are fully client-side via lib/content/serialize. */
+function DeliveryBar({
+  assetId,
+  signalId,
+  channel,
+  body,
+}: {
+  assetId: string;
+  signalId: string;
+  channel: ChannelKey;
+  body: unknown;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [when, setWhen] = useState("");
+  const [note, setNote] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(toPlainText(channel, body));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function exportAs(fmt: "md" | "html" | "txt") {
+    if (fmt === "md")
+      downloadFile(exportFilename(channel, body, "md"), "text/markdown", toMarkdown(channel, body));
+    else if (fmt === "html")
+      downloadFile(exportFilename(channel, body, "html"), "text/html", toHtml(channel, body));
+    else
+      downloadFile(exportFilename(channel, body, "txt"), "text/plain", toPlainText(channel, body));
+  }
+
+  async function schedule() {
+    if (!when) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetId,
+          scheduledFor: new Date(when).toISOString(),
+          note: note || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "Failed to schedule");
+      }
+      setMsg("Scheduled — see the Calendar.");
+      setScheduling(false);
+      setWhen("");
+      setNote("");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed to schedule");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={copy}>
+          {copied ? "Copied!" : "Copy post"}
+        </Button>
+        <details className="group relative">
+          <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
+            Export
+          </summary>
+          <div className="absolute z-10 mt-1 w-44 rounded-md border bg-background p-1 shadow-md">
+            <button className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent" onClick={() => exportAs("md")}>
+              Markdown (.md)
+            </button>
+            <button className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent" onClick={() => exportAs("html")}>
+              HTML (.html)
+            </button>
+            <button className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent" onClick={() => exportAs("txt")}>
+              Plain text (.txt)
+            </button>
+            {channel === "BLOG_POST" && (
+              <a
+                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                href={`/signals/${signalId}/print/${channel}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open print view (PDF)
+              </a>
+            )}
+          </div>
+        </details>
+        <Button size="sm" variant="ghost" onClick={() => setScheduling((s) => !s)}>
+          Schedule
+        </Button>
+      </div>
+      {scheduling && (
+        <div className="flex flex-wrap items-end gap-2 rounded-md border p-2">
+          <input
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+            className="rounded border px-2 py-1 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Note (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="flex-1 rounded border px-2 py-1 text-sm"
+          />
+          <Button size="sm" disabled={busy || !when} onClick={schedule}>
+            Add to calendar
+          </Button>
+        </div>
+      )}
+      {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
+    </div>
   );
 }
 
@@ -330,6 +463,13 @@ export function AssetCard({
             Edit
           </Button>
             </div>
+
+            <DeliveryBar
+              assetId={asset.id}
+              signalId={asset.signalId}
+              channel={asset.channel as ChannelKey}
+              body={current}
+            />
           </>
         )}
       </CardContent>

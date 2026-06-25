@@ -49,6 +49,34 @@ export function inviteEmail(opts: {
   };
 }
 
+export function scheduledDigestEmail(opts: {
+  items: { title: string; channel: string; time: string }[];
+}): { subject: string; html: string; text: string } {
+  const url = appUrl("/calendar");
+  const n = opts.items.length;
+  const rows = opts.items
+    .map(
+      (i) =>
+        `<li><strong>${i.time}</strong> — ${escapeHtml(i.title)} <em>(${escapeHtml(
+          i.channel,
+        )})</em></li>`,
+    )
+    .join("");
+  return {
+    subject: `${n} post${n === 1 ? "" : "s"} scheduled for today`,
+    html: layout(
+      "Posts scheduled for today",
+      `<p>You have ${n} post${n === 1 ? "" : "s"} to publish today:</p><ul>${rows}</ul>`,
+      "Open calendar",
+      url,
+    ),
+    text:
+      `You have ${n} post(s) scheduled for today:\n` +
+      opts.items.map((i) => `- ${i.time} — ${i.title} (${i.channel})`).join("\n") +
+      `\n${url}`,
+  };
+}
+
 export function contentReadyEmail(opts: {
   signalId: string;
   title: string;

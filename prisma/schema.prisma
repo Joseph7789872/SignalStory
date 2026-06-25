@@ -22,11 +22,12 @@ datasource db {
 // --- Identity / tenancy ---
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  onboardedAt DateTime? // null = guided onboarding not yet completed/skipped
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   users     User[]
   profile   OrganizationProfile?
@@ -40,6 +41,7 @@ model Organization {
   promptTemplates PromptTemplate[]
   memoryDocs MemoryDoc[]
   subscription Subscription?
+  scheduledPosts ScheduledPost[]
 }
 
 enum InviteStatus {
@@ -312,11 +314,35 @@ model ContentAsset {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  signal   Signal     @relation(fields: [signalId], references: [id], onDelete: Cascade)
-  feedback Feedback[]
+  signal    Signal          @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  feedback  Feedback[]
+  scheduled ScheduledPost[]
 
   @@unique([signalId, channel])
   @@index([signalId])
+}
+
+// V_Phase2: in-app content calendar. There is no third-party auto-publishing yet;
+// status is advanced manually (Mark posted) and a daily Inngest digest reminds
+// the owner of posts due today. The queue is publish-ready for a later OAuth layer.
+model ScheduledPost {
+  id           String    @id @default(cuid())
+  orgId        String
+  assetId      String
+  channel      Channel
+  scheduledFor DateTime
+  status       String    @default("SCHEDULED") // SCHEDULED | POSTED | CANCELED
+  note         String?
+  postedAt     DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  asset ContentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, scheduledFor])
+  @@index([assetId])
 }
 
 model AgentRun {

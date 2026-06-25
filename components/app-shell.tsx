@@ -42,6 +42,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Knowledge
             </Link>
             <Link
+              href="/calendar"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Calendar
+            </Link>
+            <Link
               href="/analytics"
               className="text-muted-foreground hover:text-foreground"
             >
