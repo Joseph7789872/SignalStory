@@ -59,6 +59,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               Team
             </Link>
+            <Link
+              href="/settings"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Settings
+            </Link>
           </nav>
           <SignOutButton />
         </div>

@@ -2,12 +2,39 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { requireOwner } from "@/lib/auth";
+import { requireAuthContext, requireOwner } from "@/lib/auth";
 import { getStripe, isBillingConfigured } from "@/lib/billing/stripe";
+import { getUsage } from "@/lib/billing/quota";
 import { PLANS, toPlanId, type PlanId } from "@/lib/billing/plans";
 import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
+
+// Current plan + usage for the Settings → Billing tab. Any member may read;
+// mutating actions (checkout/portal) remain owner-only via POST.
+export async function GET() {
+  let ctx;
+  try {
+    ctx = await requireAuthContext();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const usage = await getUsage(ctx.org.id);
+  return NextResponse.json({
+    billingConfigured: isBillingConfigured(),
+    role: ctx.user.role,
+    orgName: ctx.org.name,
+    email: ctx.user.email,
+    plan: usage.plan.id,
+    planLabel: usage.plan.label,
+    signalsUsed: usage.signalsUsed,
+    signalQuota: usage.signalQuota,
+    spendUsd: usage.spendUsd,
+    hardSpendCapUsd: usage.hardSpendCapUsd,
+    periodStart: usage.periodStart,
+    periodEnd: usage.periodEnd,
+  });
+}
 
 // Owner-gated billing actions. POST { action: "checkout", plan } returns a
 // Stripe Checkout Session url; POST { action: "portal" } returns a Customer
