@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { LegalFooter } from "@/components/legal-footer";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,8 @@ export default async function HomePage() {
   if (user) redirect("/dashboard");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-8 px-6 text-center">
+    <div className="flex min-h-screen flex-col">
+    <main className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
       <div className="space-y-4">
         <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           SignalStory
@@ -38,5 +40,7 @@ export default async function HomePage() {
         </Button>
       </div>
     </main>
+      <LegalFooter />
+    </div>
   );
 }
