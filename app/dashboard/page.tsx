@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { requireAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -17,6 +18,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const ctx = await requireAuthContext();
+  // Soft gate: route never-onboarded orgs into the guided wizard once. The
+  // wizard's Skip/Finish set onboardedAt, so this redirect fires only once.
+  if (!ctx.org.onboardedAt) redirect("/onboarding");
+
   const [signals, completeness] = await Promise.all([
     prisma.signal.findMany({
       where: { orgId: ctx.org.id },
