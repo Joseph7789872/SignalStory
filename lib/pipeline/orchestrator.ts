@@ -79,9 +79,16 @@ export async function runPipeline(
       select: { status: true },
     });
     if (!existing) throw new Error(`Signal not found: ${signalId}`);
+    // Terminal states are done — nothing to re-run.
     if (existing.status === "READY" || existing.status === "REJECTED") return;
-    // Another worker is already handling this signal.
-    return;
+    // Otherwise the signal is mid-pipeline. This is a durable-queue
+    // re-invocation or retry: Inngest re-runs this handler from the top on
+    // every step checkpoint and on retry, by which point the status has
+    // advanced past QUEUED. Fall through (do NOT bail) and let `step.run`
+    // memoization skip already-completed stages and resume from the one that
+    // didn't finish. (Under the in-process passthrough runner this simply
+    // re-runs the pipeline idempotently from the start.) Bailing here was the
+    // bug that stranded signals at whatever status they had reached.
   }
 
   try {
