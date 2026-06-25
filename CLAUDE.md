@@ -23,6 +23,8 @@ npm run db:studio      # Prisma Studio
 npx prisma generate    # regenerate the client after editing the schema
 npx tsx scripts/seed-prompts.ts   # seed PromptTemplate rows from in-code agent defaults
 npx tsx scripts/simulate-webhook.ts  # LIVE: POSTs signed Pipedrive + bearer-authed generic webhooks (create/dedup/filter/401/404)
+npx tsx scripts/migrate-v5-pgvector.ts  # run AFTER db:push: enables the `vector` extension + the HNSW cosine index on MemoryChunk.embedding
+npx tsx scripts/test-knowledge.ts    # LIVE: seeds memory docs, asserts pgvector retrieval ranks the right chunk (needs DB + OPENAI_API_KEY)
 npx inngest-cli@latest dev        # local durable-queue dev server (run alongside `npm run dev`)
 ```
 
@@ -39,7 +41,11 @@ There is no unit-test runner; verification is the offline schema test
 `.env` (git-ignored; template in `.env.example`). Needs an LLM key
 (`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, selected by `LLM_PROVIDER`),
 Supabase values (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`),
-and Postgres URLs (`DATABASE_URL` pooled + `DIRECT_URL` direct).
+Postgres URLs (`DATABASE_URL` pooled + `DIRECT_URL` direct), and `ENCRYPTION_KEY`
+(AES-256-GCM for connection secrets). **Embeddings (V5 RAG) always use OpenAI**
+(`text-embedding-3-small`, override with `EMBEDDING_MODEL`) — Anthropic has no
+embeddings API, so `OPENAI_API_KEY` is required for the knowledge store even when
+`LLM_PROVIDER=anthropic`.
 
 ## Architecture (the parts that span multiple files)
 
@@ -72,19 +78,28 @@ sent to the model. These same shapes are what get stored in Postgres JSON column
 or changing an agent's output, edit the Zod schema; do not hand-write JSON Schema.
 
 **Pipeline orchestration** (`lib/pipeline/orchestrator.ts`, `runPipeline(signalId)`).
-Runs steps 1→6 sequentially, **persisting each step's output and advancing
-`Signal.status` before the next step** (statuses: QUEUED→NORMALIZING→SCORING→
-STORY→NARRATIVE→CHANNEL→EDITING→READY, plus REJECTED/FAILED). This step-wise
-persistence makes it resumable-from-status. `runPipeline(signalId, step?)` takes
+Runs normalize → **retrieve (RAG)** → score → story → narrative → channel → edit
+sequentially, **persisting each step's output and advancing `Signal.status`
+before the next step** (statuses: QUEUED→NORMALIZING→SCORING→STORY→NARRATIVE→
+CHANNEL→EDITING→READY, plus REJECTED/FAILED). `runPipeline(signalId, step?)` takes
 an optional `StepRunner`: each agent stage is wrapped in `step.run(...)`, so the
 **durable queue (Inngest)** runs each stage as a retryable/resumable step while
 the default passthrough runs inline (used by the e2e test). `POST /api/signals`
 enqueues a `signal/submitted` event (`lib/inngest/{client,functions}.ts`, served
-at `app/api/inngest/route.ts`) rather than running inline. Two control points
-live here: the **significance gate** (`recommendation === "SKIP"` → REJECTED with
-`missingInfo`) and the **bounded anti-slop loop** (one regenerate per asset, then
-mark NEEDS_WORK). A per-run cost guardrail (`settleCost`) aborts to FAILED past
-`PIPELINE_MAX_COST_USD`.
+at `app/api/inngest/route.ts`) rather than running inline.
+
+**Resume semantics (subtle — read before touching the top of `runPipeline`).**
+Inngest re-invokes the handler **from the top on every step checkpoint and on
+retry**, so any code *outside* a `step.run` runs on every invocation. The initial
+claim (`updateMany` QUEUED/FAILED → NORMALIZING) therefore only matches on the
+first invocation; on later ones the status has advanced, so the guard **must fall
+through for non-terminal statuses** and let `step.run` memoization skip completed
+stages and resume the incomplete one. Only READY/REJECTED short-circuit. (Bailing
+on non-terminal statuses was a bug that stranded every signal that passed the
+gate.) Two control points also live here: the **significance gate**
+(`recommendation === "SKIP"` → REJECTED with `missingInfo`) and the **bounded
+anti-slop loop** (one regenerate per asset, then mark NEEDS_WORK). A per-run cost
+guardrail (`settleCost`) aborts to FAILED past `PIPELINE_MAX_COST_USD`.
 
 **Event ingestion (V3/V4) = the ingestion layer feeding the same pipeline.**
 Third-party events become Signals that ride the identical `signal/submitted`
@@ -112,6 +127,28 @@ Signal (`source = PIPEDRIVE|ATTIO|LINEAR|GITHUB|WEBHOOK`, `userId = null`,
 `/api/integrations` + `/integrations`; the dashboard shows a source badge and
 hides auto-`REJECTED` noise by default. **`/api/webhooks/*` must stay out of the
 middleware PROTECTED regex** (no Supabase session on inbound webhooks).
+
+**Company Knowledge RAG (V5) = durable, cited memory that grounds the brief.**
+A typed memory store (`MemoryDoc` → `MemoryChunk`) holds org knowledge (case
+studies, changelogs, founder posts, …) ingested via paste-text or fetch-URL —
+owner-gated `app/api/knowledge/route.ts` + `/knowledge`. **pgvector** is enabled
+in the schema (`extensions = [vector]` + `previewFeatures = ["postgresqlExtensions"]`);
+`MemoryChunk.embedding` is `Unsupported("vector(1536)")`, so Prisma can't
+read/write it — **vector writes and similarity reads use raw `$executeRaw`/
+`$queryRaw`** (cosine `<=>`, HNSW index added by `scripts/migrate-v5-pgvector.ts`,
+run after `db:push`). `lib/agents/embeddings.ts` (OpenAI only — see Environment),
+`lib/knowledge/chunk.ts` (deterministic chunker), `lib/knowledge/retrieve.ts`
+(`retrieveProof(orgId, query, k)` → a citation-tagged `[S1]…[Sk]` block + sources).
+The orchestrator's **`retrieve` step** embeds the evidence, fetches top-k proof,
+stores the resolved sources on `Signal.retrievedProof`, and threads the proof
+**block as volatile per-agent input** (the `retrieved` arg on scorer/story/
+narrative) — **never folded into the cached context prefix**, to preserve prompt
+caching. `NarrativeBrief.citedClaims` (`{claim, sourceIds, supported}`) records
+which claims are backed by retrieved sources; `supported: false` flags an
+ungrounded claim to the human + the anti-slop editor. The signal detail page
+renders a **proof library** from `retrievedProof` + `citedClaims`. Empty store →
+empty block → the pipeline degrades to pre-V5 behavior. The embed call is logged
+as an `AgentRun` (`agent: "retriever"`) so RAG cost rolls into the per-run total.
 
 **Prompt versioning.** Agent instructions can be overridden from the DB:
 `PromptTemplate` rows (one active per agent) are loaded by `getActivePrompt(agent,
