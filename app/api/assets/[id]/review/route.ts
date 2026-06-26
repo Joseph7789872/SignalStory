@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
 import { CHANNEL_SCHEMA } from "@/lib/agents/schemas";
+import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,14 @@ export async function POST(
       decision,
       notes: notes ?? null,
     },
+  });
+  writeAudit({
+    orgId: ctx.org.id,
+    actor: ctx.user,
+    action: `asset.${decision.toLowerCase()}`,
+    resourceType: "ContentAsset",
+    resourceId: asset.id,
+    metadata: { channel: asset.channel },
   });
 
   return NextResponse.json({ asset: updated });

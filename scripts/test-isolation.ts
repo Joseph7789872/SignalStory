@@ -114,6 +114,32 @@ async function main() {
       data: { connectionId: conn2.id, provider: "WEBHOOK", externalId: "evt-1" },
     });
     check("same externalId under a different connection is allowed", Boolean(ev2.id));
+
+    // --- Soft delete + restore ---
+    console.log("\nsoft delete:");
+    const sd = await newSignal(a.id, "A-to-delete");
+    await prisma.signal.update({ where: { id: sd.id }, data: { deletedAt: new Date() } });
+    const activeList = await prisma.signal.findMany({ where: { orgId: a.id, deletedAt: null } });
+    check("soft-deleted signal excluded from default list", !activeList.some((s) => s.id === sd.id));
+    const trashed = await prisma.signal.findMany({ where: { orgId: a.id, deletedAt: { not: null } } });
+    check("soft-deleted signal appears in trash query", trashed.some((s) => s.id === sd.id));
+    await prisma.signal.update({ where: { id: sd.id }, data: { deletedAt: null } });
+    const restored = await prisma.signal.findMany({ where: { orgId: a.id, deletedAt: null } });
+    check("restore brings the signal back", restored.some((s) => s.id === sd.id));
+
+    // --- Audit log is org-scoped ---
+    console.log("\naudit + social isolation:");
+    await prisma.auditLog.create({ data: { orgId: a.id, action: "test.action", resourceType: "Signal" } });
+    const aLogs = await prisma.auditLog.count({ where: { orgId: a.id } });
+    const bLogs = await prisma.auditLog.count({ where: { orgId: b.id } });
+    check("audit log row is scoped to its org", aLogs >= 1 && bLogs === 0);
+
+    // --- SocialAccount is org-scoped ---
+    await prisma.socialAccount.create({
+      data: { orgId: a.id, provider: "LINKEDIN", externalId: "urn:li:person:x", accessToken: "enc" },
+    });
+    const bSocial = await prisma.socialAccount.findMany({ where: { orgId: b.id } });
+    check("one org cannot see another's social account", bSocial.length === 0);
   } finally {
     await prisma.organization.deleteMany({ where: { id: { in: [a.id, b.id] } } });
     await prisma.$disconnect();

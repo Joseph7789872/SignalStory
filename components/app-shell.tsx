@@ -66,6 +66,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Team
             </Link>
             <Link
+              href="/audit"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Audit
+            </Link>
+            <Link
+              href="/trash"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Trash
+            </Link>
+            <Link
               href="/settings"
               className="text-muted-foreground hover:text-foreground"
             >

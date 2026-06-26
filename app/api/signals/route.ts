@@ -7,6 +7,7 @@ import { inngest } from "@/lib/inngest/client";
 import { rateLimit } from "@/lib/ratelimit";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/billing/quota";
 import { logError } from "@/lib/log";
+import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,14 @@ export async function POST(req: Request) {
       status: "QUEUED",
     },
   });
+  writeAudit({
+    orgId: ctx.org.id,
+    actor: ctx.user,
+    action: "signal.created",
+    resourceType: "Signal",
+    resourceId: signal.id,
+    metadata: { title: parsed.data.title },
+  });
 
   // Durable: enqueue to Inngest. The run-pipeline function executes each agent
   // stage as a retryable/resumable step (see lib/inngest/functions.ts). If the
@@ -98,7 +107,7 @@ export async function GET() {
   }
 
   const signals = await prisma.signal.findMany({
-    where: { orgId: ctx.org.id },
+    where: { orgId: ctx.org.id, deletedAt: null },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: {
