@@ -4,25 +4,30 @@
 // that are queried/filtered.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // pgvector support for the V5 memory store (MemoryChunk.embedding).
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider   = "postgresql"
   // Supabase: pooled connection (port 6543, ?pgbouncer=true) for the app runtime.
-  url       = env("DATABASE_URL")
+  url        = env("DATABASE_URL")
   // Direct connection (port 5432) for migrations / db:push.
-  directUrl = env("DIRECT_URL")
+  directUrl  = env("DIRECT_URL")
+  // pgvector: db push emits CREATE EXTENSION; required by MemoryChunk.embedding.
+  extensions = [vector]
 }
 
 // --- Identity / tenancy ---
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  onboardedAt DateTime? // null = guided onboarding not yet completed/skipped
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   users     User[]
   profile   OrganizationProfile?
@@ -34,6 +39,9 @@ model Organization {
   integrations IntegrationConnection[]
   signals   Signal[]
   promptTemplates PromptTemplate[]
+  memoryDocs MemoryDoc[]
+  subscription Subscription?
+  scheduledPosts ScheduledPost[]
 }
 
 enum InviteStatus {
@@ -80,6 +88,27 @@ model User {
   feedback  Feedback[]
 
   @@index([orgId])
+}
+
+// --- Billing (V_Phase1) ---
+
+// One row per org (provisioned FREE on first sign-in by getOrCreateAuthContext).
+// Stripe is the source of truth for paid state; the webhook upserts plan/status/
+// period here. `plan` is a PlanId string (see lib/billing/plans.ts); quota +
+// hard spend cap are derived from the plan, not stored.
+model Subscription {
+  id                   String    @id @default(cuid())
+  orgId                String    @unique
+  plan                 String    @default("FREE") // PlanId: FREE | STARTER | PRO
+  status               String    @default("active") // active | past_due | canceled
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  currentPeriodStart   DateTime  @default(now())
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
 // --- Context layer (the moat) ---
@@ -243,6 +272,7 @@ model Signal {
   scoreDetail      Json? // [2] full SignalScore
   storyAngles      Json? // [3] StoryAngles
   narrativeBrief   Json? // [4] NarrativeBrief
+  retrievedProof   Json? // [R] resolved memory sources cited in the brief (proof library)
   costUsd          Float        @default(0)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -284,11 +314,35 @@ model ContentAsset {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  signal   Signal     @relation(fields: [signalId], references: [id], onDelete: Cascade)
-  feedback Feedback[]
+  signal    Signal          @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  feedback  Feedback[]
+  scheduled ScheduledPost[]
 
   @@unique([signalId, channel])
   @@index([signalId])
+}
+
+// V_Phase2: in-app content calendar. There is no third-party auto-publishing yet;
+// status is advanced manually (Mark posted) and a daily Inngest digest reminds
+// the owner of posts due today. The queue is publish-ready for a later OAuth layer.
+model ScheduledPost {
+  id           String    @id @default(cuid())
+  orgId        String
+  assetId      String
+  channel      Channel
+  scheduledFor DateTime
+  status       String    @default("SCHEDULED") // SCHEDULED | POSTED | CANCELED
+  note         String?
+  postedAt     DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  asset ContentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, scheduledFor])
+  @@index([assetId])
 }
 
 model AgentRun {
@@ -350,4 +404,53 @@ model PromptTemplate {
 
   @@unique([orgId, agent, version])
   @@index([orgId, agent, isActive])
+}
+
+// --- V5: durable memory store (Company Knowledge RAG + founder/exec POV) ---
+// One typed, org-scoped vector store. Docs are chunked + embedded; per-signal
+// retrieval grounds the narrative brief in cited proof.
+enum MemoryKind {
+  COMPANY_DOC
+  CHANGELOG
+  CASE_STUDY
+  FOUNDER_POST
+  CALL_TRANSCRIPT
+  CUSTOMER_QUOTE
+  OTHER
+}
+
+model MemoryDoc {
+  id          String     @id @default(cuid())
+  orgId       String
+  kind        MemoryKind @default(COMPANY_DOC)
+  title       String
+  sourceUrl   String?
+  rawText     String // full source text (audit + re-chunk)
+  createdById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  org    Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  chunks MemoryChunk[]
+
+  @@index([orgId, kind])
+}
+
+// embedding is declared Unsupported so Prisma creates the vector column but
+// ignores it for reads/writes — chunk inserts and cosine similarity reads go
+// through $executeRaw/$queryRaw (see lib/knowledge/retrieve.ts). A cosine
+// ivfflat index is added by scripts/migrate-v5-pgvector.ts.
+model MemoryChunk {
+  id        String                      @id @default(cuid())
+  docId     String
+  orgId     String // denormalized for the org-scoped similarity filter
+  ord       Int // chunk order within the doc
+  text      String
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                    @default(now())
+
+  doc MemoryDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([docId])
 }

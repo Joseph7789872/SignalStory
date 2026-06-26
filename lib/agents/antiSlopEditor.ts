@@ -12,7 +12,7 @@ export const INSTRUCTION = `You are the Anti-Slop Editor. You evaluate generated
 
 Run these checks (each passed/failed with a one-line note):
 - generic_language: free of clichés and filler?
-- supported_claims: claims backed by the evidence/brief, not invented?
+- supported_claims: claims backed by the evidence/brief, not invented? If the brief's citedClaims mark claims as supported=false, the content must not lean on them as established fact.
 - specificity: real numbers/names/specifics present?
 - insight: teaches something / has a real point of view?
 - founder_voice: sounds like this founder, matches brand voice, no banned phrases?

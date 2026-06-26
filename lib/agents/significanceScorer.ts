@@ -35,6 +35,7 @@ export async function runSignificanceScorer(args: {
   signalId: string;
   context: string;
   evidence: EvidencePacket;
+  retrieved?: string;
 }): Promise<SignalScore> {
   const prompt = await getActivePrompt("significance_scorer", {
     version: PROMPT_VERSION,
@@ -47,7 +48,9 @@ export async function runSignificanceScorer(args: {
     promptVersion: prompt.version,
     context: args.context,
     instruction: prompt.instruction,
-    input: `Evidence Packet:\n${JSON.stringify(args.evidence, null, 2)}`,
+    input:
+      `Evidence Packet:\n${JSON.stringify(args.evidence, null, 2)}` +
+      (args.retrieved ? `\n\n${args.retrieved}` : ""),
     schema: SignalScoreSchema,
     maxTokens: 2048,
   });

@@ -36,6 +36,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Integrations
             </Link>
             <Link
+              href="/knowledge"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Knowledge
+            </Link>
+            <Link
+              href="/calendar"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Calendar
+            </Link>
+            <Link
               href="/analytics"
               className="text-muted-foreground hover:text-foreground"
             >
@@ -52,6 +64,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="text-muted-foreground hover:text-foreground"
             >
               Team
+            </Link>
+            <Link
+              href="/settings"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Settings
             </Link>
           </nav>
           <SignOutButton />

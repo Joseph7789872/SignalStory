@@ -87,6 +87,7 @@ export async function getOrCreateAuthContext(): Promise<AuthContext | null> {
           founder: { create: { name: name ?? "" } },
           brandVoice: { create: {} },
           editorial: { create: {} },
+          subscription: { create: {} }, // defaults to FREE
         },
       },
     },

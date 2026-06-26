@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireAuthContext, requireOwner } from "@/lib/auth";
+import { sendEmail } from "@/lib/email";
+import { inviteEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +81,17 @@ export async function POST(req: Request) {
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86_400_000);
   const invite = await prisma.organizationInvite.create({
     data: { orgId: ctx.org.id, email, role: parsed.data.role, expiresAt },
+  });
+
+  // Best-effort invite email — sendEmail never throws and no-ops when Resend
+  // is unconfigured, so delivery problems can't fail the invite.
+  await sendEmail({
+    to: email,
+    ...inviteEmail({
+      orgName: ctx.org.name,
+      role: parsed.data.role,
+      inviteToken: invite.token,
+    }),
   });
 
   return NextResponse.json({ invite });

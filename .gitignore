@@ -20,3 +20,7 @@ prisma/migrations/
 .gstack/
 # Exported chat transcript — may contain secrets pasted in conversation.
 session.txt
+# Internal planning docs — kept local only, never pushed (repo is public).
+/docs/architecture-and-implementation-plan.md
+/docs/phase-1-trust-safety-money.md
+/docs/phase-2-last-mile-onboarding.md

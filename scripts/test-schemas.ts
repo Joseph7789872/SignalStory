@@ -20,6 +20,8 @@ import { attioAdapter } from "../lib/integrations/providers/attio";
 import { linearAdapter } from "../lib/integrations/providers/linear";
 import { githubAdapter } from "../lib/integrations/providers/github";
 import { webhookAdapter } from "../lib/integrations/providers/webhook";
+import { chunkText } from "../lib/knowledge/chunk";
+import { formatProofBlock, type ProofSource } from "../lib/knowledge/retrieve";
 
 let failures = 0;
 function check(name: string, cond: boolean, detail = "") {
@@ -277,6 +279,45 @@ console.log("\nIntegration adapters:");
     "github parse handles form-urlencoded payload (GitHub default)",
     formEvents.length === 1 && formEvents[0].type === "release.published",
   );
+}
+
+// --- V5: memory store (chunking, proof block, cited brief) ---
+console.log("\nV5 memory / RAG:");
+{
+  // Chunker: deterministic, respects size, never drops content empty.
+  const para = "Para with enough words to matter. ".repeat(20); // ~700 chars
+  const doc = [para, para, para, para, para].join("\n\n"); // ~3500 chars
+  const chunks = chunkText(doc, { maxChars: 1200, overlapChars: 100 });
+  check("chunkText splits a long doc into multiple chunks", chunks.length > 1);
+  check("chunkText respects maxChars (+overlap slack)", chunks.every((c) => c.length <= 1200 + 200));
+  check("chunkText is deterministic", JSON.stringify(chunkText(doc, { maxChars: 1200, overlapChars: 100 })) === JSON.stringify(chunks));
+  check("chunkText returns [] for empty input", chunkText("   ").length === 0);
+
+  // Proof block: empty when no sources; citation-tagged when present.
+  check("formatProofBlock empty with no sources", formatProofBlock([]) === "");
+  const sources: ProofSource[] = [
+    { id: "S1", chunkId: "c1", docId: "d1", title: "Acme case study", sourceUrl: null, kind: "CASE_STUDY", excerpt: "Acme cut onboarding 40%.", score: 0.82 },
+    { id: "S2", chunkId: "c2", docId: "d2", title: "v2.3 changelog", sourceUrl: "https://x/r", kind: "CHANGELOG", excerpt: "Shipped SSO.", score: 0.71 },
+  ];
+  const block = formatProofBlock(sources);
+  check("formatProofBlock tags sources by id", block.includes("[S1]") && block.includes("[S2]") && block.includes("Acme cut onboarding"));
+
+  // NarrativeBrief now carries citedClaims (required; empty array allowed).
+  const brief = {
+    audience: "B2B founders",
+    thesis: "Governance, not model quality, gates enterprise AI.",
+    narrativeArc: ["hook", "proof", "lesson"],
+    keyArguments: ["Buyers ask for audit logs first"],
+    objections: [{ objection: "Isn't this just features?", response: "No — it's trust." }],
+    cta: "Audit your governance story before your next enterprise call.",
+    positioning: "Reinforces our governance-first wedge.",
+    citedClaims: [
+      { claim: "Acme cut onboarding 40%", sourceIds: ["S1"], supported: true },
+      { claim: "Everyone wants SSO", sourceIds: [], supported: false },
+    ],
+  };
+  check("NarrativeBrief parses with citedClaims", NarrativeBriefSchema.safeParse(brief).success);
+  check("NarrativeBrief parses with empty citedClaims (no proof retrieved)", NarrativeBriefSchema.safeParse({ ...brief, citedClaims: [] }).success);
 }
 
 if (failures > 0) {

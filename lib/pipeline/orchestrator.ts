@@ -11,6 +11,10 @@ import {
   regenerateChannel,
 } from "@/lib/agents/channelTransformer";
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
+import { retrieveProof } from "@/lib/knowledge/retrieve";
+import { isOverSpendCap } from "@/lib/billing/quota";
+import { logError } from "@/lib/log";
+import { EMBEDDING_MODEL, estimateEmbeddingCostUsd } from "@/lib/agents/embeddings";
 import type {
   ChannelBundle,
   EvidencePacket,
@@ -77,12 +81,42 @@ export async function runPipeline(
       select: { status: true },
     });
     if (!existing) throw new Error(`Signal not found: ${signalId}`);
+    // Terminal states are done — nothing to re-run.
     if (existing.status === "READY" || existing.status === "REJECTED") return;
-    // Another worker is already handling this signal.
-    return;
+    // Otherwise the signal is mid-pipeline. This is a durable-queue
+    // re-invocation or retry: Inngest re-runs this handler from the top on
+    // every step checkpoint and on retry, by which point the status has
+    // advanced past QUEUED. Fall through (do NOT bail) and let `step.run`
+    // memoization skip already-completed stages and resume from the one that
+    // didn't finish. (Under the in-process passthrough runner this simply
+    // re-runs the pipeline idempotently from the start.) Bailing here was the
+    // bug that stranded signals at whatever status they had reached.
   }
 
   try {
+    // Defense-in-depth: if the org was already over its per-period hard spend
+    // cap before this signal started, don't burn more LLM budget. Wrapped in a
+    // step so it's evaluated once at the true start (not on every Inngest
+    // re-invocation, which would otherwise strand a signal once its own cost
+    // tipped the org over the cap). Complements the per-run settleCost guardrail.
+    const overCap = await step.run("spend-cap-check", async () => {
+      const sig = await prisma.signal.findUnique({
+        where: { id: signalId },
+        select: { orgId: true },
+      });
+      return sig ? await isOverSpendCap(sig.orgId) : false;
+    });
+    if (overCap) {
+      await prisma.signal.update({
+        where: { id: signalId },
+        data: {
+          status: "FAILED",
+          statusReason: "Organization monthly spend cap reached",
+        },
+      });
+      return;
+    }
+
     const { context, rawInput } = await step.run("load", async () => {
       const signal = await prisma.signal.findUniqueOrThrow({
         where: { id: signalId },
@@ -110,6 +144,38 @@ export async function runPipeline(
       return evidence;
     });
 
+    // [R] Retrieve proof from the org's memory store (Company Knowledge RAG).
+    // Volatile per-signal input — NOT folded into the cached context prefix, so
+    // prompt caching of `context` is preserved. Degrades to "" on an empty store.
+    const proofBlock = await step.run("retrieve", async () => {
+      const signal = await prisma.signal.findUniqueOrThrow({
+        where: { id: signalId },
+        select: { orgId: true },
+      });
+      const query = `${evidence.summary}\n${evidence.facts.join("\n")}`;
+      const { block, sources, tokens } = await retrieveProof(signal.orgId, query);
+      await prisma.signal.update({
+        where: { id: signalId },
+        data: { retrievedProof: asJson(sources) },
+      });
+      // Log the embedding cost as an AgentRun so it rolls into the per-run total.
+      if (tokens > 0) {
+        await prisma.agentRun.create({
+          data: {
+            signalId,
+            agent: "retriever",
+            model: `openai:${EMBEDDING_MODEL}`,
+            promptVersion: "retriever.v1",
+            inputTokens: tokens,
+            costUsd: estimateEmbeddingCostUsd(tokens),
+            status: "ok",
+          },
+        });
+        await settleCost(signalId);
+      }
+      return block;
+    });
+
     // [2] Significance Scorer — the gate
     const gate = await step.run("score", async () => {
       await prisma.signal.update({
@@ -120,6 +186,7 @@ export async function runPipeline(
         signalId,
         context,
         evidence,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },
@@ -157,6 +224,7 @@ export async function runPipeline(
         context,
         evidence,
         score,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },
@@ -177,6 +245,7 @@ export async function runPipeline(
         context,
         evidence,
         angles,
+        retrieved: proofBlock,
       });
       await prisma.signal.update({
         where: { id: signalId },
@@ -265,6 +334,7 @@ export async function runPipeline(
       });
     });
   } catch (err) {
+    logError("pipeline", err, { signalId });
     await prisma.signal.update({
       where: { id: signalId },
       data: {
