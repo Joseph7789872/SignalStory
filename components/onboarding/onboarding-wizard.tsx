@@ -49,6 +49,41 @@ export function OnboardingWizard() {
   // Step 5 — Knowledge
   const [docTitle, setDocTitle] = useState("");
   const [docText, setDocText] = useState("");
+  // Auto-fill from URL (enrichment)
+  const [enrichUrl, setEnrichUrl] = useState("");
+  const [enriching, setEnriching] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
+
+  async function autofill() {
+    if (!enrichUrl.trim()) return;
+    setEnriching(true);
+    setEnrichMsg(null);
+    try {
+      const res = await fetch("/api/context/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: enrichUrl.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Couldn't analyze that page");
+      const s = data.suggestion;
+      if (s.description) setDescription(s.description);
+      if (s.category) setCategory(s.category);
+      if (s.icp) setIcp(s.icp);
+      if (Array.isArray(s.beliefs)) setBeliefs(s.beliefs.join("\n"));
+      if (s.tone) setTone(s.tone);
+      if (s.sentenceStyle) setSentenceStyle(s.sentenceStyle);
+      if (Array.isArray(s.pillars))
+        setPillars(s.pillars.map((p: { name: string; description: string }) => `${p.name}: ${p.description}`).join("\n"));
+      if (Array.isArray(s.audiences))
+        setAudiences(s.audiences.map((a: { name: string; description: string }) => `${a.name}: ${a.description}`).join("\n"));
+      setEnrichMsg("Pre-filled from your site — review and edit each step before saving.");
+    } catch (e) {
+      setEnrichMsg(e instanceof Error ? e.message : "Couldn't analyze that page");
+    } finally {
+      setEnriching(false);
+    }
+  }
 
   // Prefill from existing context (so an interrupted setup resumes).
   useEffect(() => {
@@ -172,6 +207,21 @@ export function OnboardingWizard() {
 
       {step === 0 && (
         <Section title="What does your company do?" hint="Plain language. This anchors every story.">
+          <div className="rounded-lg border bg-muted/40 p-3">
+            <Label>Auto-fill from your website (optional)</Label>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <Input
+                value={enrichUrl}
+                onChange={(e) => setEnrichUrl(e.target.value)}
+                placeholder="https://yourcompany.com"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" disabled={enriching || !enrichUrl.trim()} onClick={autofill}>
+                {enriching ? "Analyzing…" : "Auto-fill"}
+              </Button>
+            </div>
+            {enrichMsg && <p className="mt-1.5 text-xs text-muted-foreground">{enrichMsg}</p>}
+          </div>
           <Field label="Description" example="We help B2B SaaS teams turn product usage signals into customer-facing content automatically." value={description} onChange={setDescription} onExample={setDescription} textarea />
           <Field label="Category" example="AI content / developer tools" value={category} onChange={setCategory} onExample={setCategory} />
           <Field label="Ideal customer" example="Seed–Series B B2B SaaS founders and heads of marketing" value={icp} onChange={setIcp} onExample={setIcp} textarea />

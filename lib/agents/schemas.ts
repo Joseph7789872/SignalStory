@@ -217,3 +217,24 @@ export const AntiSlopScoreSchema = z.object({
     .describe("Concrete instructions to fix it if it fails"),
 });
 export type AntiSlopScore = z.infer<typeof AntiSlopScoreSchema>;
+
+// --- [Phase 3] Context auto-enrichment (companyEnricher) ---
+// A subset of the context fields, extracted from a company website. The user
+// reviews before saving via the existing partial PUT /api/context.
+export const CompanyEnrichmentSchema = z.object({
+  description: z.string().describe("One-paragraph plain-language what-we-do"),
+  category: z.string().describe("Market category, short"),
+  icp: z.string().describe("Ideal customer profile, one line"),
+  beliefs: z
+    .array(z.string())
+    .describe("3-6 opinionated founder/company beliefs implied by the site"),
+  tone: z.string().describe("Inferred brand tone, one line"),
+  sentenceStyle: z.string().describe("Inferred sentence style, one line"),
+  pillars: z
+    .array(z.object({ name: z.string(), description: z.string() }))
+    .describe("2-4 likely content pillars"),
+  audiences: z
+    .array(z.object({ name: z.string(), description: z.string() }))
+    .describe("1-3 target audiences"),
+});
+export type CompanyEnrichment = z.infer<typeof CompanyEnrichmentSchema>;
