@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +194,23 @@ function DeliveryBar({
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [autopub, setAutopub] = useState(false);
+  const [liConnected, setLiConnected] = useState(false);
+
+  // Only LinkedIn auto-publishes; check once whether an account is connected.
+  useEffect(() => {
+    if (channel !== "LINKEDIN_FOUNDER") return;
+    fetch("/api/social", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const has = d?.accounts?.some(
+          (a: { provider: string; status: string }) =>
+            a.provider === "LINKEDIN" && a.status === "ACTIVE",
+        );
+        setLiConnected(Boolean(has));
+      })
+      .catch(() => {});
+  }, [channel]);
 
   function copy() {
     navigator.clipboard.writeText(toPlainText(channel, body));
@@ -222,6 +239,7 @@ function DeliveryBar({
           assetId,
           scheduledFor: new Date(when).toISOString(),
           note: note || undefined,
+          autopublish: autopub,
         }),
       });
       if (!res.ok) {
@@ -293,6 +311,16 @@ function DeliveryBar({
           <Button size="sm" disabled={busy || !when} onClick={schedule}>
             Add to calendar
           </Button>
+          {channel === "LINKEDIN_FOUNDER" && liConnected && (
+            <label className="flex w-full items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={autopub}
+                onChange={(e) => setAutopub(e.target.checked)}
+              />
+              Auto-publish to LinkedIn at the scheduled time
+            </label>
+          )}
         </div>
       )}
       {msg && <p className="text-xs text-muted-foreground">{msg}</p>}

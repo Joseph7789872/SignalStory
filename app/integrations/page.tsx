@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { IntegrationManager } from "@/components/integrations/integration-manager";
+import { SocialAccounts } from "@/components/social/social-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +17,11 @@ export default function IntegrationsPage() {
           straight into the pipeline (the significance gate filters the noise).
         </p>
       </div>
+
+      <Suspense>
+        <SocialAccounts />
+      </Suspense>
+
       <IntegrationManager />
     </div>
   );
