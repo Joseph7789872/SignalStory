@@ -181,13 +181,22 @@ export function OnboardingWizard() {
   async function finish() {
     setBusy(true);
     await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
-    router.push("/dashboard");
+    goToDashboard();
   }
 
   async function skip() {
     setBusy(true);
     await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
+    goToDashboard();
+  }
+
+  // The dashboard soft-gate (redirect to /onboarding) is set just above by the
+  // POST. Without refresh(), the App Router can replay the cached /dashboard ->
+  // /onboarding redirect from before onboarding completed, stranding the user in
+  // a loop. refresh() invalidates the Router Cache so push() re-evaluates the gate.
+  function goToDashboard() {
     router.push("/dashboard");
+    router.refresh();
   }
 
   return (
