@@ -58,11 +58,16 @@ export function OnboardingWizard() {
     if (!enrichUrl.trim()) return;
     setEnriching(true);
     setEnrichMsg(null);
+    // Hard timeout so a stalled request can never leave the button stuck on
+    // "Analyzing…" — the user always gets a result or a clear error.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45_000);
     try {
       const res = await fetch("/api/context/enrich", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: enrichUrl.trim() }),
+        signal: controller.signal,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Couldn't analyze that page");
@@ -79,8 +84,16 @@ export function OnboardingWizard() {
         setAudiences(s.audiences.map((a: { name: string; description: string }) => `${a.name}: ${a.description}`).join("\n"));
       setEnrichMsg("Pre-filled from your site — review and edit each step before saving.");
     } catch (e) {
-      setEnrichMsg(e instanceof Error ? e.message : "Couldn't analyze that page");
+      const aborted = e instanceof DOMException && e.name === "AbortError";
+      setEnrichMsg(
+        aborted
+          ? "That took too long — try again, or fill the steps in manually."
+          : e instanceof Error
+            ? e.message
+            : "Couldn't analyze that page",
+      );
     } finally {
+      clearTimeout(timeout);
       setEnriching(false);
     }
   }
@@ -88,7 +101,15 @@ export function OnboardingWizard() {
   // Prefill from existing context (so an interrupted setup resumes).
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/context", { cache: "no-store" });
+      // Right after sign-up the Supabase session cookie can lag a beat behind
+      // the client, so the very first request may 401. Retry once after a short
+      // delay before giving up, so a brand-new account doesn't see a spurious
+      // console error / empty prefill on first load.
+      let res = await fetch("/api/context", { cache: "no-store" });
+      if (res.status === 401) {
+        await new Promise((r) => setTimeout(r, 600));
+        res = await fetch("/api/context", { cache: "no-store" });
+      }
       if (!res.ok) return;
       const d = await res.json();
       setCompleteness(d.completeness ?? 0);
