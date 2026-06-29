@@ -7,7 +7,12 @@ import { prisma } from "@/lib/db";
 import { requireOwner } from "@/lib/auth";
 import { chunkText } from "@/lib/knowledge/chunk";
 import { fetchUrlText } from "@/lib/knowledge/htmlToText";
-import { embed, toVectorLiteral } from "@/lib/agents/embeddings";
+import {
+  embed,
+  toVectorLiteral,
+  EMBEDDING_MODEL,
+  estimateEmbeddingCostUsd,
+} from "@/lib/agents/embeddings";
 import { rateLimit } from "@/lib/ratelimit";
 import { writeAudit } from "@/lib/audit";
 
@@ -127,8 +132,11 @@ export async function POST(req: Request) {
 
   // Embed all chunks (OpenAI). Surface a clear error if the key is missing/bad.
   let vectors: number[][];
+  let embedTokens = 0;
   try {
-    ({ vectors } = await embed(chunks));
+    const embedded = await embed(chunks);
+    vectors = embedded.vectors;
+    embedTokens = embedded.tokens;
   } catch (err) {
     return NextResponse.json(
       { error: "Embedding failed", details: err instanceof Error ? err.message : String(err) },
@@ -164,6 +172,21 @@ export async function POST(req: Request) {
         rows,
       )}`,
     );
+  }
+
+  // Meter the ingestion embedding spend against the org cap (signal-less run).
+  if (embedTokens > 0) {
+    await prisma.agentRun.create({
+      data: {
+        orgId: ctx.org.id,
+        agent: "embedder",
+        model: `openai:${EMBEDDING_MODEL}`,
+        promptVersion: "embedder.v1",
+        inputTokens: embedTokens,
+        costUsd: estimateEmbeddingCostUsd(embedTokens),
+        status: "ok",
+      },
+    });
   }
 
   writeAudit({

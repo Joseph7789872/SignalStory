@@ -42,7 +42,12 @@ export async function getUsage(orgId: string): Promise<Usage> {
     }),
     prisma.agentRun.aggregate({
       _sum: { costUsd: true },
-      where: { signal: { orgId }, createdAt: { gte: periodStart } },
+      // Sum runs attributed to one of the org's signals OR directly to the org
+      // (signal-less runs like document-ingestion embeddings carry orgId).
+      where: {
+        createdAt: { gte: periodStart },
+        OR: [{ signal: { orgId } }, { orgId }],
+      },
     }),
   ]);
   const spendUsd = spendAgg._sum.costUsd ?? 0;
