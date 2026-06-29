@@ -32,9 +32,12 @@ export async function GET() {
   // Per-version performance (org-scoped): how many runs used a version, and the
   // human-feedback decisions on signals where that version ran. Approximate - a
   // signal's feedback reflects all of its agents - but enough to tune by hand.
-  const runs = await prisma.agentRun.findMany({
+  // Counts are aggregated DB-side (groupBy distinct version×signal pairs) rather
+  // than materializing every AgentRun row, which grows unboundedly per org.
+  const runGroups = await prisma.agentRun.groupBy({
+    by: ["promptVersion", "signalId"],
     where: { signal: { orgId } },
-    select: { promptVersion: true, signalId: true },
+    _count: { _all: true },
   });
   const feedback = await prisma.feedback.findMany({
     where: { signal: { orgId } },
@@ -50,18 +53,15 @@ export async function GET() {
     string,
     { runs: number; feedback: Record<string, number> }
   > = {};
-  const seenSignalPerVersion = new Map<string, Set<string>>();
-  for (const r of runs) {
-    const perf = (performance[r.promptVersion] ??= { runs: 0, feedback: {} });
-    perf.runs += 1;
-    const seen = seenSignalPerVersion.get(r.promptVersion) ?? new Set();
-    if (!seen.has(r.signalId)) {
-      seen.add(r.signalId);
-      for (const dec of fbBySignal.get(r.signalId) ?? []) {
-        perf.feedback[dec] = (perf.feedback[dec] ?? 0) + 1;
-      }
+  // groupBy already yields one row per distinct (version, signalId), so each
+  // signal is counted once per version for feedback — no manual dedup needed.
+  for (const g of runGroups) {
+    const perf = (performance[g.promptVersion] ??= { runs: 0, feedback: {} });
+    perf.runs += g._count._all;
+    if (!g.signalId) continue;
+    for (const dec of fbBySignal.get(g.signalId) ?? []) {
+      perf.feedback[dec] = (perf.feedback[dec] ?? 0) + 1;
     }
-    seenSignalPerVersion.set(r.promptVersion, seen);
   }
 
   const agents = AGENT_DEFAULTS.map((d) => {

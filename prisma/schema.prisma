@@ -219,6 +219,8 @@ model IngestedEvent {
   // Per-connection dedup: generic/user-supplied ids can't collide across orgs.
   @@unique([connectionId, externalId])
   @@index([connectionId])
+  // Supports retention pruning of this append-only ledger by age.
+  @@index([createdAt])
 }
 
 // --- Pipeline ---
@@ -274,6 +276,8 @@ model Signal {
   @@index([orgId, status])
   @@index([orgId, deletedAt])
   @@index([userId])
+  // Attribute / look up auto-ingested signals by their source connection.
+  @@index([connectionId])
 }
 
 enum Channel {
@@ -337,6 +341,9 @@ model ScheduledPost {
 
   @@index([orgId, scheduledFor])
   @@index([assetId])
+  // Serves the cross-tenant due-posts / digest scans that filter by
+  // status + scheduledFor without an orgId (publish-due-posts, daily digest).
+  @@index([status, scheduledFor])
 }
 
 // --- V_Phase3: outbound social publishing (OAuth) ---

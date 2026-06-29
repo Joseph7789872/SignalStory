@@ -40,14 +40,23 @@ export async function getOrCreateAuthContext(): Promise<AuthContext | null> {
 
   // Invite-aware: if this email was invited to an existing org, join it instead
   // of provisioning a new workspace. Acceptance is implicit on first sign-in.
-  const invite = await prisma.organizationInvite.findFirst({
-    where: {
-      email: { equals: email, mode: "insensitive" },
-      status: "PENDING",
-      expiresAt: { gt: new Date() },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Require a CONFIRMED email first — otherwise someone could sign up with an
+  // unverified address matching a pending invite and join another org's
+  // workspace. Unconfirmed users fall through to their own (isolated) workspace.
+  const emailConfirmed = Boolean(
+    (authUser as { email_confirmed_at?: string | null }).email_confirmed_at ??
+      (authUser as { confirmed_at?: string | null }).confirmed_at,
+  );
+  const invite = emailConfirmed
+    ? await prisma.organizationInvite.findFirst({
+        where: {
+          email: { equals: email, mode: "insensitive" },
+          status: "PENDING",
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
 
   if (invite) {
     const user = await prisma.$transaction(async (tx) => {

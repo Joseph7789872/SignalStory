@@ -3,6 +3,8 @@
 // LinkedIn env. Posting requires the "Sign In with LinkedIn (OIDC)" + "Share on
 // LinkedIn" products approved and the `w_member_social` scope (external gate).
 
+import crypto from "crypto";
+
 const AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 const USERINFO_URL = "https://api.linkedin.com/v2/userinfo";
@@ -16,6 +18,46 @@ export function isLinkedInConfigured(): boolean {
 export function redirectUri(): string {
   const base = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}/api/oauth/linkedin/callback`;
+}
+
+// --- CSRF state binding ----------------------------------------------------
+// The OAuth `state` must be tied to the user+org that started the flow, so an
+// attacker cannot graft their own LinkedIn authorization onto a victim's org.
+// We mint a random nonce as the `state` sent to LinkedIn, and store a cookie
+// binding `nonce.userId.orgId` with an HMAC. The callback re-derives the
+// authenticated context and requires it to match the binding.
+
+function stateSecret(): string {
+  // Reuse the app encryption key as the HMAC key (already required at runtime).
+  const s = process.env.ENCRYPTION_KEY;
+  if (!s) throw new Error("ENCRYPTION_KEY is required for OAuth state binding");
+  return s;
+}
+
+export function signOAuthState(nonce: string, userId: string, orgId: string): string {
+  const payload = `${nonce}.${userId}.${orgId}`;
+  const sig = crypto.createHmac("sha256", stateSecret()).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+/** Returns true iff `cookieValue` is a valid binding for `nonce`/`userId`/`orgId`. */
+export function verifyOAuthState(
+  cookieValue: string,
+  nonce: string,
+  userId: string,
+  orgId: string,
+): boolean {
+  const parts = cookieValue.split(".");
+  if (parts.length !== 4) return false;
+  const [cNonce, cUser, cOrg, cSig] = parts;
+  if (cNonce !== nonce || cUser !== userId || cOrg !== orgId) return false;
+  const expected = crypto
+    .createHmac("sha256", stateSecret())
+    .update(`${cNonce}.${cUser}.${cOrg}`)
+    .digest("hex");
+  const a = Buffer.from(cSig);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 export function authorizeUrl(state: string): string {

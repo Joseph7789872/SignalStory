@@ -65,12 +65,26 @@ const ConfigInput = z
   })
   .passthrough();
 
-const CreateInput = z.object({
-  provider: z.enum(PROVIDER_VALUES),
-  label: z.string().optional().default(""),
-  secret: z.string().min(8),
-  config: ConfigInput.optional().default({}),
-});
+const CreateInput = z
+  .object({
+    provider: z.enum(PROVIDER_VALUES),
+    label: z.string().optional().default(""),
+    secret: z.string().min(8),
+    config: ConfigInput.optional().default({}),
+  })
+  .superRefine((v, ctx) => {
+    // The generic webhook adapter authenticates by this shared bearer secret
+    // alone (no provider HMAC), so require a longer, less-guessable value.
+    // Native-HMAC providers keep the min(8) floor since their secrets are
+    // provider-generated and may legitimately be shorter.
+    if (v.provider === "WEBHOOK" && v.secret.length < 24) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["secret"],
+        message: "Webhook shared secret must be at least 24 characters",
+      });
+    }
+  });
 
 export async function POST(req: Request) {
   let ctx;

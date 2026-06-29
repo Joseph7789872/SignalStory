@@ -41,6 +41,14 @@ export class AnthropicProvider implements LLMProvider {
       messages: [{ role: "user", content: args.input }],
     });
 
+    // A truncated response (hit the token ceiling) yields unparseable JSON;
+    // surface the real cause instead of letting it look like malformed output.
+    if (resp.stop_reason === "max_tokens") {
+      throw new Error(
+        `Anthropic output truncated at max_tokens=${args.maxTokens}; raise maxTokens for this agent`,
+      );
+    }
+
     const text = resp.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

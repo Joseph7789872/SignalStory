@@ -3,18 +3,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
 import { encryptSecret } from "@/lib/crypto";
-import { exchangeCode, getMe } from "@/lib/social/linkedin";
+import { exchangeCode, getMe, verifyOAuthState } from "@/lib/social/linkedin";
 import { writeAudit } from "@/lib/audit";
 import { logError } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
+// Always clear the one-time state cookie on every exit path (prevents replay).
 function back(status: "connected" | "error", msg?: string): NextResponse {
   const base = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
   const u = new URL(`${base}/integrations`);
   u.searchParams.set("linkedin", status);
   if (msg) u.searchParams.set("msg", msg);
-  return NextResponse.redirect(u.toString());
+  const res = NextResponse.redirect(u.toString());
+  res.cookies.set("li_oauth_state", "", { path: "/", maxAge: 0 });
+  return res;
 }
 
 export async function GET(req: Request) {
@@ -24,15 +27,20 @@ export async function GET(req: Request) {
   const err = url.searchParams.get("error");
   if (err || !code || !state) return back("error", err ?? "missing_code");
 
-  // CSRF: the state cookie set in /start must match.
   const cookieState = req.headers.get("cookie")?.match(/li_oauth_state=([^;]+)/)?.[1];
-  if (!cookieState || cookieState !== state) return back("error", "state_mismatch");
+  if (!cookieState) return back("error", "state_mismatch");
 
   let ctx;
   try {
     ctx = await requireAuthContext();
   } catch {
     return back("error", "not_signed_in");
+  }
+
+  // CSRF: the signed state cookie must be bound to THIS user+org and the nonce
+  // LinkedIn echoed back. Defeats login-CSRF / token-fixation across tenants.
+  if (!verifyOAuthState(cookieState, state, ctx.user.id, ctx.org.id)) {
+    return back("error", "state_mismatch");
   }
 
   try {

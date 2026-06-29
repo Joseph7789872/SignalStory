@@ -23,7 +23,15 @@ const CHANNEL_LABEL: Record<string, string> = {
  * agent outputs are plain JSON, so erasing the wrapper here is safe).
  */
 export const runPipelineFn = inngest.createFunction(
-  { id: "run-pipeline", retries: 2, triggers: [{ event: "signal/submitted" }] },
+  {
+    id: "run-pipeline",
+    retries: 2,
+    // Serialize per signal: a duplicate `signal/submitted` (e.g. an accidental
+    // double-send) can't spawn a second concurrent run for the same signalId,
+    // which would re-execute uncheckpointed stages and double-spend.
+    concurrency: { limit: 1, key: "event.data.signalId" },
+    triggers: [{ event: "signal/submitted" }],
+  },
   async ({ event, step }) => {
     const runner: StepRunner = {
       run: (id, fn) => step.run(id, fn as () => Promise<unknown>) as never,
@@ -206,4 +214,27 @@ export const publishDuePostsFn = inngest.createFunction(
   },
 );
 
-export const functions = [runPipelineFn, scheduledPostsDigestFn, publishDuePostsFn];
+/**
+ * Retention: prune the IngestedEvent dedup ledger. Providers only retry
+ * webhooks for minutes/hours, so rows older than 90 days are safe to delete —
+ * this keeps the append-only table from growing without bound. Runs daily.
+ */
+export const pruneIngestedEventsFn = inngest.createFunction(
+  { id: "prune-ingested-events", triggers: [{ cron: "30 3 * * *" }] },
+  async ({ step }) => {
+    return await step.run("prune", async () => {
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const { count } = await prisma.ingestedEvent.deleteMany({
+        where: { createdAt: { lt: cutoff } },
+      });
+      return { deleted: count };
+    });
+  },
+);
+
+export const functions = [
+  runPipelineFn,
+  scheduledPostsDigestFn,
+  publishDuePostsFn,
+  pruneIngestedEventsFn,
+];

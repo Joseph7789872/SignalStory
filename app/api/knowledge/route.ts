@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import type { MemoryKind } from "@prisma/client";
+import { Prisma, type MemoryKind } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { requireOwner } from "@/lib/auth";
 import { chunkText } from "@/lib/knowledge/chunk";
 import { fetchUrlText } from "@/lib/knowledge/htmlToText";
 import { embed, toVectorLiteral } from "@/lib/agents/embeddings";
+import { rateLimit } from "@/lib/ratelimit";
 import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +82,16 @@ export async function POST(req: Request) {
     return ownerError(e);
   }
 
+  // This path fetches a URL and runs OpenAI embeddings over up to 200k chars —
+  // the most expensive unmetered endpoint, so rate-limit it per org.
+  const rl = await rateLimit(`knowledge:${ctx.org.id}`, "knowledge");
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: rl.retryAfter },
+      { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
+  }
+
   const parsed = CreateInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -137,12 +148,22 @@ export async function POST(req: Request) {
   });
 
   // Prisma can't write the Unsupported vector column — insert chunks via raw SQL.
-  for (let i = 0; i < chunks.length; i++) {
-    const lit = toVectorLiteral(vectors[i]);
-    await prisma.$executeRaw`
-      INSERT INTO "MemoryChunk" (id, "docId", "orgId", ord, text, embedding, "createdAt")
-      VALUES (${randomUUID()}, ${doc.id}, ${ctx.org.id}, ${i}, ${chunks[i]}, ${lit}::vector, now())
-    `;
+  // Batched multi-row INSERTs (≤100 rows each) instead of one round-trip per
+  // chunk; a large doc can produce hundreds of chunks. Values stay parameterized.
+  const BATCH = 100;
+  for (let off = 0; off < chunks.length; off += BATCH) {
+    const slice = chunks.slice(off, off + BATCH);
+    const rows = slice.map(
+      (text, j) =>
+        Prisma.sql`(${randomUUID()}, ${doc.id}, ${ctx.org.id}, ${off + j}, ${text}, ${toVectorLiteral(
+          vectors[off + j],
+        )}::vector, now())`,
+    );
+    await prisma.$executeRaw(
+      Prisma.sql`INSERT INTO "MemoryChunk" (id, "docId", "orgId", ord, text, embedding, "createdAt") VALUES ${Prisma.join(
+        rows,
+      )}`,
+    );
   }
 
   writeAudit({

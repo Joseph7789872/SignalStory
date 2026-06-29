@@ -7,22 +7,35 @@ import { Redis } from "@upstash/redis";
 
 let redis: Redis | null = null;
 const limiters = new Map<string, Ratelimit>();
+let warnedNoRedis = false;
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  if (!url || !token) {
+    // Loudly flag (once) that rate limiting is disabled in production so a
+    // missing Upstash config doesn't silently remove all abuse protection.
+    if (!warnedNoRedis && process.env.NODE_ENV === "production") {
+      warnedNoRedis = true;
+      console.warn(
+        "[ratelimit] UPSTASH_REDIS_REST_URL/TOKEN unset — rate limiting is DISABLED. " +
+          "Configure Upstash to protect expensive endpoints in production.",
+      );
+    }
+    return null;
+  }
   if (!redis) redis = new Redis({ url, token });
   return redis;
 }
 
-export type LimiterName = "signals" | "webhook" | "enrich";
+export type LimiterName = "signals" | "webhook" | "enrich" | "knowledge";
 
 function getLimiter(name: LimiterName, r: Redis): Ratelimit {
   let lim = limiters.get(name);
   if (lim) return lim;
-  // Sliding-window budgets. signals: per-org submissions; webhook: per-IP flood
-  // guard; enrich: per-org URL-scrape + LLM (expensive, so keep it tight).
+  // Sliding-window budgets. signals: per-org submissions; webhook: per-connection
+  // flood guard; enrich/knowledge: per-org URL-scrape + LLM/embeddings (expensive,
+  // so keep them tight).
   const limiter =
     name === "signals"
       ? Ratelimit.slidingWindow(30, "1 h")
