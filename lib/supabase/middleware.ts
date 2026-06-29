@@ -1,7 +1,26 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { THEME_INIT } from "@/lib/theme-init";
+
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
+
+// sha256 of the static theme-init inline script (app/layout.tsx). It's allowed
+// in script-src by hash because a static <script> can't carry a per-request
+// nonce without forcing dynamic rendering on every page. Computed once from the
+// shared THEME_INIT constant (memoised) so it can never drift from the script.
+let themeHashPromise: Promise<string> | null = null;
+function themeScriptHash(): Promise<string> {
+  if (!themeHashPromise) {
+    themeHashPromise = crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(THEME_INIT))
+      .then(
+        (buf) =>
+          `'sha256-${btoa(String.fromCharCode(...new Uint8Array(buf)))}'`,
+      );
+  }
+  return themeHashPromise;
+}
 
 // NB: /api/webhooks is intentionally NOT protected — third parties POST there
 // with no Supabase session; those routes authenticate via signature + token.
@@ -15,7 +34,7 @@ const PROTECTED =
  * styles and nonces on styles aren't practical. connect-src allows Supabase
  * (https + realtime wss) and Sentry. Dev relaxes script/connect for HMR/eval.
  */
-function contentSecurityPolicy(nonce: string): string {
+async function contentSecurityPolicy(nonce: string): Promise<string> {
   const isDev = process.env.NODE_ENV !== "production";
   let supabaseHost = "";
   try {
@@ -26,10 +45,11 @@ function contentSecurityPolicy(nonce: string): string {
   const supabase = supabaseHost
     ? `https://${supabaseHost} wss://${supabaseHost}`
     : "";
+  const themeHash = await themeScriptHash();
 
   return [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' ${themeHash} 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
@@ -47,7 +67,7 @@ function contentSecurityPolicy(nonce: string): string {
 export async function updateSession(request: NextRequest) {
   // Edge runtime: use Web Crypto + btoa (no Node Buffer).
   const nonce = btoa(crypto.randomUUID());
-  const csp = contentSecurityPolicy(nonce);
+  const csp = await contentSecurityPolicy(nonce);
 
   // Pass the nonce + CSP on the request so Next can nonce its own scripts, and
   // a server component can read the nonce via headers().get("x-nonce").
