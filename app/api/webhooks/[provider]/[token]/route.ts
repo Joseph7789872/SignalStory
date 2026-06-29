@@ -21,12 +21,8 @@ type ClaimedEvent =
   | { kind: "quota_rejected" }
   | { kind: "ingested"; signalId: string; externalId: string };
 
-/** Best-effort client IP for the flood guard. */
-function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
+// Reject obviously-oversized payloads before buffering the whole body.
+const MAX_BODY_BYTES = 1_000_000; // 1 MB
 
 function isUniqueConstraintError(err: unknown): boolean {
   return (
@@ -57,8 +53,10 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Flood guard: per connection + source IP (no-op unless Upstash is configured).
-  const rl = await rateLimit(`webhook:${connection.id}:${clientIp(req)}`, "webhook");
+  // Flood guard keyed on the connection only. The source IP is derived from
+  // x-forwarded-for, which the client controls, so including it would let an
+  // attacker rotate the rate-limit bucket and evade the cap.
+  const rl = await rateLimit(`webhook:${connection.id}`, "webhook");
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many requests", retryAfter: rl.retryAfter },
@@ -66,8 +64,17 @@ export async function POST(
     );
   }
 
+  // Reject oversized bodies (cheap header check) before buffering them.
+  const declaredLen = Number(req.headers.get("content-length") ?? 0);
+  if (declaredLen > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
   // Read the RAW body (needed for signature verification) + lowercased headers.
   const rawBody = await req.text();
+  if (rawBody.length > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
   const headers: Record<string, string> = {};
   req.headers.forEach((value, key) => {
     headers[key] = value;

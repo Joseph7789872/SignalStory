@@ -12,6 +12,7 @@ const DEFAULT_EVENTS = ["release.published"];
 
 /** Verify GitHub's `x-hub-signature-256`: "sha256=" + HMAC-SHA256(secret, body). */
 function verify({ rawBody, headers, secret }: VerifyArgs): boolean {
+  if (!secret) return false;
   const header =
     headers["x-hub-signature-256"] ?? headers["X-Hub-Signature-256"];
   if (!header) return false;

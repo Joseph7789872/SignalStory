@@ -261,6 +261,28 @@ export async function runPipeline(
       return brief;
     });
 
+    // Re-check the org spend cap before the most expensive stages (channel
+    // writing + per-asset editing). The start-of-run check is a TOCTOU snapshot;
+    // by now the scorer/story/narrative costs are committed, so an org that
+    // crossed the cap concurrently is caught before more budget is burned.
+    const overCapNow = await step.run("spend-cap-recheck", async () => {
+      const sig = await prisma.signal.findUnique({
+        where: { id: signalId },
+        select: { orgId: true },
+      });
+      return sig ? await isOverSpendCap(sig.orgId) : false;
+    });
+    if (overCapNow) {
+      await prisma.signal.update({
+        where: { id: signalId },
+        data: {
+          status: "FAILED",
+          statusReason: "Organization monthly spend cap reached",
+        },
+      });
+      return;
+    }
+
     // [5] Channel Transformer
     await step.run("channel", async () => {
       await prisma.signal.update({

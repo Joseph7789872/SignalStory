@@ -214,4 +214,27 @@ export const publishDuePostsFn = inngest.createFunction(
   },
 );
 
-export const functions = [runPipelineFn, scheduledPostsDigestFn, publishDuePostsFn];
+/**
+ * Retention: prune the IngestedEvent dedup ledger. Providers only retry
+ * webhooks for minutes/hours, so rows older than 90 days are safe to delete —
+ * this keeps the append-only table from growing without bound. Runs daily.
+ */
+export const pruneIngestedEventsFn = inngest.createFunction(
+  { id: "prune-ingested-events", triggers: [{ cron: "30 3 * * *" }] },
+  async ({ step }) => {
+    return await step.run("prune", async () => {
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const { count } = await prisma.ingestedEvent.deleteMany({
+        where: { createdAt: { lt: cutoff } },
+      });
+      return { deleted: count };
+    });
+  },
+);
+
+export const functions = [
+  runPipelineFn,
+  scheduledPostsDigestFn,
+  publishDuePostsFn,
+  pruneIngestedEventsFn,
+];

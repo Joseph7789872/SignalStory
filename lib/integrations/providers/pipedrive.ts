@@ -28,6 +28,7 @@ function safeEqual(a: string, b: string): boolean {
  * second factor.
  */
 function verify({ headers, secret }: VerifyArgs): boolean {
+  if (!secret) return false;
   const auth = headers["authorization"] ?? headers["Authorization"];
   if (!auth) return false;
   const expected = "Basic " + Buffer.from(secret).toString("base64");

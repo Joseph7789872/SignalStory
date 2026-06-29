@@ -12,6 +12,7 @@ const DEFAULT_EVENTS = ["record.created", "record.updated", "list-entry.created"
 
 /** Verify Attio's `attio-signature`: HMAC-SHA256(secret, rawBody) hex. */
 function verify({ rawBody, headers, secret }: VerifyArgs): boolean {
+  if (!secret) return false;
   const header =
     headers["attio-signature"] ??
     headers["Attio-Signature"] ??

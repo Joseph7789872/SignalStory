@@ -12,6 +12,7 @@ const DEFAULT_EVENTS = ["Issue.update", "Project.update"];
 
 /** Verify Linear's `linear-signature`: HMAC-SHA256(secret, rawBody) hex. */
 function verify({ rawBody, headers, secret }: VerifyArgs): boolean {
+  if (!secret) return false;
   const header = headers["linear-signature"] ?? headers["Linear-Signature"];
   if (!header) return false;
   const expected = crypto

@@ -23,6 +23,7 @@ function safeEqual(a: string, b: string): boolean {
  * signed webhook, far higher reach (any tool in Zapier's catalog).
  */
 function verify({ rawBody: _rawBody, headers, secret }: VerifyArgs): boolean {
+  if (!secret) return false;
   const auth = headers["authorization"] ?? headers["Authorization"];
   const bearer = auth?.replace(/^Bearer\s+/i, "");
   const custom = headers["x-webhook-secret"] ?? headers["X-Webhook-Secret"];
