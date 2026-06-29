@@ -112,6 +112,22 @@ model Subscription {
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
+// Short-lived hold placed at pipeline start to make the org hard-spend cap
+// atomic under concurrency: a run reserves its worst-case cost so concurrent
+// runs can't each read "under cap" and collectively overshoot. Released on
+// successful finish; rows older than the TTL are ignored by the gate and
+// pruned opportunistically (so a crashed run self-heals).
+model SpendReservation {
+  id        String   @id @default(cuid())
+  orgId     String
+  signalId  String?
+  amountUsd Float
+  createdAt DateTime @default(now())
+
+  @@index([orgId, createdAt])
+  @@index([signalId])
+}
+
 // --- Context layer (the moat) ---
 
 model OrganizationProfile {
