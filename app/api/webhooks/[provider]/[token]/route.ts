@@ -35,8 +35,9 @@ function isUniqueConstraintError(err: unknown): boolean {
 
 export async function POST(
   req: Request,
-  { params }: { params: { provider: string; token: string } },
+  props: { params: Promise<{ provider: string; token: string }> }
 ) {
+  const params = await props.params;
   const adapter = getAdapter(params.provider);
   if (!adapter) {
     return NextResponse.json({ error: "Unknown provider" }, { status: 404 });

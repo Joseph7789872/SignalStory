@@ -9,10 +9,8 @@ import type { AntiSlopScore, NarrativeBrief } from "@/lib/agents/schemas";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  _req: Request,
-  { params }: { params: { id: string } },
-) {
+export async function POST(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let ctx;
   try {
     ctx = await requireAuthContext();

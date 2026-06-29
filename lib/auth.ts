@@ -20,7 +20,7 @@ function slugify(input: string): string {
  * keyed to the Supabase auth user. Returns null when there is no session.
  */
 export async function getOrCreateAuthContext(): Promise<AuthContext | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();

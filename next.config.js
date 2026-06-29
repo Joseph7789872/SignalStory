@@ -20,11 +20,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  webpack: (config) => {
-    // Node 24's undici uses private class fields webpack can't parse; externalize it.
-    config.externals = [...(config.externals || []), "undici"];
-    return config;
-  },
+  // Next 16 defaults to Turbopack, which parses modern syntax natively — the
+  // previous webpack `undici` externalization (a workaround for webpack not
+  // parsing undici's private class fields) is no longer needed.
   images: {
     // Only allow remote hosts actually used. (Removed stale img.clerk.com —
     // Clerk is not used; auth is Supabase.) Keep this list narrow: a broad

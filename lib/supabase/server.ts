@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 /** Supabase client for Server Components, Route Handlers, and Server Actions. */
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  // Next 16: cookies() is async.
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

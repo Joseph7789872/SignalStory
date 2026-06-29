@@ -20,10 +20,8 @@ const STATUS = {
   REJECT: "REJECTED",
 } as const;
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } },
-) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let ctx;
   try {
     ctx = await requireAuthContext();
