@@ -201,7 +201,7 @@ export function KnowledgeManager() {
               </Button>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {successMsg && (
-                <p className="text-sm text-emerald-600">{successMsg}</p>
+                <p className="text-sm text-success">{successMsg}</p>
               )}
             </form>
           </CardContent>

@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { CalendarClock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 
 type Post = {
   id: string;
@@ -82,22 +84,33 @@ export default function CalendarPage() {
     await patch(id, { scheduledFor: d.toISOString() });
   }
 
-  if (posts === null) return <p className="text-muted-foreground">Loading…</p>;
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Content calendar</h1>
-        <p className="text-sm text-muted-foreground">
-          Plan when to publish. Mark posts as posted once they’re live.
-        </p>
-      </div>
+      <PageHeader
+        title="Content calendar"
+        description="Plan when to publish. Mark posts as posted once they’re live."
+      />
 
-      {posts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nothing scheduled yet. Open a ready signal and use “Schedule” on any
-          asset.
-        </p>
+      {posts === null ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-xl border bg-card" />
+          ))}
+        </div>
+      ) : posts.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <CalendarClock className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-semibold">Nothing scheduled yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Open a ready signal and use “Schedule” on any asset.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         Object.entries(
           posts.reduce<Record<string, Post[]>>((acc, p) => {

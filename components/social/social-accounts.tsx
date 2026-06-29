@@ -57,7 +57,7 @@ export function SocialAccounts() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {flag === "connected" && (
-          <p className="text-green-700">LinkedIn connected.</p>
+          <p className="text-success">LinkedIn connected.</p>
         )}
         {flag === "error" && (
           <p className="text-destructive">

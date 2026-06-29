@@ -2,50 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * SignalStory design tokens.
+ * Style: "Trust & Authority" (B2B/enterprise) — navy foundation + blue CTA on
+ * cool slate neutrals. Generated via the ui-ux-pro-max design system; do not
+ * introduce AI purple/pink gradients (an explicit anti-pattern for this brand).
+ * Tokens are HSL triplets consumed as hsl(var(--token)) in tailwind.config.ts.
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 40% 98%; /* #F8FAFC */
+    --foreground: 222 47% 11%; /* near-navy ink */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary == the blue CTA, so every shadcn Button is on-brand by default. */
+    --primary: 201 96% 32%; /* #0369A1 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Brand blue alias (links, accents, focus) + the navy authority color. */
+    --brand: 201 96% 32%;
+    --brand-foreground: 0 0% 100%;
+    --navy: 222 47% 11%; /* #0F172A */
+    --navy-foreground: 210 40% 98%;
+
+    --secondary: 215 25% 27%; /* slate-700 */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 213 27% 92%; /* #E8ECF1 */
+    --muted-foreground: 215 16% 42%;
+    --accent: 210 40% 96%; /* hover surface */
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%; /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 201 96% 32%; /* brand blue focus ring */
+    --radius: 0.65rem;
+
+    /* Sidebar chrome — navy authority surface. */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 213 27% 84%;
+    --sidebar-muted: 215 25% 65%;
+    --sidebar-border: 217 33% 20%;
+    --sidebar-accent: 217 33% 17%; /* hover/row bg */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-active: 201 96% 42%; /* active item accent */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 7%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222 44% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 44% 10%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+
+    --primary: 201 90% 55%; /* brighter blue for dark surfaces */
+    --primary-foreground: 222 47% 9%;
+    --brand: 201 90% 55%;
+    --brand-foreground: 222 47% 9%;
+    --navy: 222 47% 11%;
+    --navy-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 20%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 20%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 70% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 9%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 22%;
+    --ring: 201 90% 55%;
+
+    --sidebar: 222 47% 9%;
+    --sidebar-foreground: 213 27% 80%;
+    --sidebar-muted: 215 20% 58%;
+    --sidebar-border: 217 33% 18%;
+    --sidebar-accent: 217 33% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-active: 201 90% 58%;
   }
 }
 
@@ -53,7 +103,27 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,10 +1,28 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
 import "./globals.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const DESCRIPTION =
   "Turn company signals into founder-quality thought leadership. Context first, writing last.";
+
+// Set the theme class before first paint to avoid a flash of the wrong theme.
+const THEME_INIT = `
+try {
+  var t = localStorage.getItem('theme');
+  if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  }
+} catch (e) {}
+`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -35,8 +53,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-background antialiased">{children}</body>
+    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        {children}
+      </body>
     </html>
   );
 }

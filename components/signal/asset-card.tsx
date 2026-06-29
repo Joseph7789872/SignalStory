@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertTriangle, Check, ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -421,24 +422,38 @@ export function AssetCard({
             <Body channel={asset.channel} body={current} />
 
             {detail && (
-          <div className="rounded-md bg-muted p-3 text-xs">
-            <p className="font-medium">
-              Anti-slop review
-              {detail.couldGptWriteThis
-                ? " — ⚠ a generic model could write this"
-                : " — ✓ requires proprietary context"}
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+            <p className="flex items-center gap-1.5 font-medium">
+              {detail.couldGptWriteThis ? (
+                <>
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                  Anti-slop review — a generic model could write this
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                  Anti-slop review — requires proprietary context
+                </>
+              )}
             </p>
             {detail.checks?.length > 0 && (
-              <ul className="mt-1 space-y-0.5">
+              <ul className="mt-2 space-y-1">
                 {detail.checks.map((c: any, i: number) => (
-                  <li key={i}>
-                    {c.passed ? "✓" : "✗"} {c.name}: {c.note}
+                  <li key={i} className="flex items-start gap-1.5">
+                    {c.passed ? (
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+                    ) : (
+                      <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                    )}
+                    <span>
+                      <span className="font-medium">{c.name}:</span> {c.note}
+                    </span>
                   </li>
                 ))}
               </ul>
             )}
             {!detail.passes && detail.regenerateGuidance && (
-              <p className="mt-1 text-muted-foreground">
+              <p className="mt-2 text-muted-foreground">
                 Guidance: {detail.regenerateGuidance}
               </p>
             )}

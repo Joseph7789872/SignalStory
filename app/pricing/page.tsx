@@ -1,7 +1,6 @@
-import Link from "next/link";
-
 import { LegalFooter } from "@/components/legal-footer";
 import { PricingTiers } from "@/components/marketing/pricing-tiers";
+import { PublicHeader } from "@/components/marketing/public-header";
 
 export const dynamic = "force-dynamic";
 
@@ -17,24 +16,22 @@ export const metadata = {
 export default function PricingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
-        <div className="text-center">
-          <Link
-            href="/"
-            className="text-sm font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground"
-          >
-            SignalStory
-          </Link>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+      <PublicHeader />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <span className="text-sm font-semibold uppercase tracking-wider text-brand">
             Pricing
+          </span>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight">
+            Plans that scale with your output
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+          <p className="mx-auto mt-4 text-lg text-muted-foreground">
             Start free. Upgrade when you need more signals per month. Every plan
             runs the full context-first pipeline and anti-slop editor.
           </p>
         </div>
 
-        <div className="mt-12">
+        <div className="mt-14">
           <PricingTiers />
         </div>
       </main>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 
 type Item = { id: string; title: string; deletedAt: string; kind?: string };
 type Trash = { signals: Item[]; docs: Item[] };
@@ -73,12 +74,10 @@ export default function TrashPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Trash</h1>
-        <p className="text-sm text-muted-foreground">
-          Deleted signals and knowledge docs. Restore them or delete permanently.
-        </p>
-      </div>
+      <PageHeader
+        title="Trash"
+        description="Deleted signals and knowledge docs. Restore them or delete permanently."
+      />
       <Section title="Signals" items={data.signals} type="Signal" />
       <Section title="Knowledge docs" items={data.docs} type="MemoryDoc" />
     </div>

@@ -1,8 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BookOpen,
+  Compass,
+  FileText,
+  Gauge,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -73,48 +83,91 @@ export default function SignalDetailPage({
     return () => clearInterval(t);
   }, [signal, load]);
 
-  if (loading) return <p className="text-muted-foreground">Loading…</p>;
-  if (!signal) return <p className="text-destructive">Signal not found.</p>;
+  if (loading) return <SignalSkeleton />;
+  if (!signal)
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+          <XCircle className="h-8 w-8 text-muted-foreground" />
+          <p className="font-medium">Signal not found.</p>
+          <Link href="/dashboard" className="text-sm text-brand hover:underline">
+            Back to signals
+          </Link>
+        </CardContent>
+      </Card>
+    );
 
   const score = signal.scoreDetail;
   const angles = signal.storyAngles;
   const brief = signal.narrativeBrief;
+  const running = !isTerminalStatus(signal.status);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {signal.rawInput?.title ?? "Signal"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {signal.costUsd > 0 && `Run cost $${signal.costUsd.toFixed(4)}`}
-          </p>
+      {/* Header */}
+      <div>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to signals
+        </Link>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {signal.rawInput?.title ?? "Signal"}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {signal.significanceScore !== null && (
+                <Badge variant="outline">
+                  Significance {signal.significanceScore}/100
+                </Badge>
+              )}
+              {signal.costUsd > 0 && (
+                <span className="tabular-nums">
+                  Run cost ${signal.costUsd.toFixed(4)}
+                </span>
+              )}
+            </div>
+          </div>
+          <StatusBadge status={signal.status} />
         </div>
-        <StatusBadge status={signal.status} />
       </div>
 
-      {!isTerminalStatus(signal.status) && (
-        <p className="text-sm text-muted-foreground">
-          Pipeline running… this view updates automatically.
-        </p>
+      {/* Running banner */}
+      {running && (
+        <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
+          <span className="text-muted-foreground">
+            Pipeline running — this view updates automatically.
+          </span>
+        </div>
       )}
 
+      {/* Rejected */}
       {signal.status === "REJECTED" && (
-        <Card className="border-amber-300 bg-amber-50">
+        <Card className="border-warning/40 bg-warning/10">
           <CardHeader>
-            <CardTitle className="text-base">Not worth publishing yet</CardTitle>
-            <CardDescription className="text-amber-800">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              Not worth publishing yet
+            </CardTitle>
+            <CardDescription className="text-foreground/70">
               {signal.statusReason}
             </CardDescription>
           </CardHeader>
         </Card>
       )}
 
+      {/* Failed */}
       {signal.status === "FAILED" && (
-        <Card className="border-destructive">
+        <Card className="border-destructive/40 bg-destructive/5">
           <CardHeader>
-            <CardTitle className="text-base text-destructive">Failed</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base text-destructive">
+              <XCircle className="h-4 w-4" />
+              Failed
+            </CardTitle>
             <CardDescription>{signal.statusReason}</CardDescription>
           </CardHeader>
         </Card>
@@ -124,8 +177,19 @@ export default function SignalDetailPage({
       {score && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-base">
-              Significance: {score.overall}/100
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Gauge className="h-4 w-4 text-brand" />
+              Significance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold tabular-nums">
+                  {score.overall}
+                </span>
+                <span className="text-sm text-muted-foreground">/100</span>
+              </div>
               <Badge
                 variant={
                   score.recommendation === "PUBLISH"
@@ -137,27 +201,36 @@ export default function SignalDetailPage({
               >
                 {score.recommendation}
               </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
               {Object.entries(score.dimensions ?? {}).map(([k, v]) => (
-                <div key={k} className="flex justify-between rounded border px-2 py-1">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-medium">{v as number}</span>
+                <div key={k} className="rounded-lg border bg-muted/30 px-3 py-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="capitalize text-muted-foreground">{k}</span>
+                    <span className="font-semibold tabular-nums">
+                      {v as number}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-brand"
+                      style={{ width: `${Math.min(100, v as number)}%` }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
             {score.reasons?.length > 0 && (
-              <ul className="list-disc space-y-1 pl-5">
+              <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                 {score.reasons.map((r: string, i: number) => (
                   <li key={i}>{r}</li>
                 ))}
               </ul>
             )}
             {score.missingInfo?.length > 0 && (
-              <p className="text-muted-foreground">
-                To strengthen: {score.missingInfo.join("; ")}
+              <p className="rounded-md bg-muted/50 px-3 py-2 text-muted-foreground">
+                <span className="font-medium text-foreground">To strengthen:</span>{" "}
+                {score.missingInfo.join("; ")}
               </p>
             )}
           </CardContent>
@@ -168,25 +241,30 @@ export default function SignalDetailPage({
       {angles?.angles?.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Story angles</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Compass className="h-4 w-4 text-brand" />
+              Story angles
+            </CardTitle>
             <CardDescription>Events aren’t content — stories are.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {angles.angles.map((a: any, i: number) => (
               <div
                 key={i}
-                className={`rounded-lg border p-3 ${
-                  i === angles.recommendedIndex ? "border-primary bg-accent" : ""
+                className={`rounded-lg border p-4 ${
+                  i === angles.recommendedIndex
+                    ? "border-brand/40 bg-brand/5 ring-1 ring-brand/15"
+                    : ""
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{a.title}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{a.title}</span>
                   <Badge variant="outline">{a.type}</Badge>
                   {i === angles.recommendedIndex && (
                     <Badge variant="success">recommended</Badge>
                   )}
                 </div>
-                <p className="mt-1 text-sm">{a.thesis}</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">{a.thesis}</p>
               </div>
             ))}
           </CardContent>
@@ -197,19 +275,25 @@ export default function SignalDetailPage({
       {brief && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Narrative brief</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-brand" />
+              Narrative brief
+            </CardTitle>
             <CardDescription>The source of truth for all assets.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="font-medium">Thesis:</span> {brief.thesis}
-            </p>
-            <p>
-              <span className="font-medium">Audience:</span> {brief.audience}
-            </p>
-            <p>
-              <span className="font-medium">CTA:</span> {brief.cta}
-            </p>
+          <CardContent className="space-y-3 text-sm">
+            {[
+              ["Thesis", brief.thesis],
+              ["Audience", brief.audience],
+              ["CTA", brief.cta],
+            ].map(([label, value]) =>
+              value ? (
+                <div key={label as string} className="grid gap-1 sm:grid-cols-[7rem_1fr]">
+                  <span className="font-medium text-muted-foreground">{label}</span>
+                  <span>{value as string}</span>
+                </div>
+              ) : null,
+            )}
           </CardContent>
         </Card>
       )}
@@ -221,7 +305,10 @@ export default function SignalDetailPage({
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Proof library</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BookOpen className="h-4 w-4 text-brand" />
+                Proof library
+              </CardTitle>
               <CardDescription>
                 Sources from your company knowledge used to ground this story.
               </CardDescription>
@@ -229,9 +316,9 @@ export default function SignalDetailPage({
             <CardContent className="space-y-4 text-sm">
               <div className="space-y-2">
                 {proof.map((src) => (
-                  <div key={src.id} className="rounded-lg border p-3 space-y-1">
+                  <div key={src.id} className="space-y-1 rounded-lg border p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs rounded bg-muted px-1.5 py-0.5">
+                      <span className="rounded bg-brand/10 px-1.5 py-0.5 font-mono text-xs text-brand">
                         [{src.id}]
                       </span>
                       {src.sourceUrl ? (
@@ -239,7 +326,7 @@ export default function SignalDetailPage({
                           href={src.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-medium hover:underline"
+                          className="font-medium hover:text-brand hover:underline"
                         >
                           {src.title}
                         </a>
@@ -249,12 +336,12 @@ export default function SignalDetailPage({
                       <Badge variant="outline">
                         {src.kind.toLowerCase().replace(/_/g, " ")}
                       </Badge>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-xs text-muted-foreground">
                         {Math.round(src.score * 100)}% match
                       </span>
                     </div>
                     {src.excerpt && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
                         {src.excerpt}
                       </p>
                     )}
@@ -266,13 +353,16 @@ export default function SignalDetailPage({
                 <div className="space-y-2">
                   <p className="font-medium">Cited claims</p>
                   {claims.map((c, i) => (
-                    <div key={i} className="flex flex-wrap items-start gap-2 rounded-lg border p-3">
+                    <div
+                      key={i}
+                      className="flex flex-wrap items-start gap-2 rounded-lg border p-3"
+                    >
                       <span className="flex-1">{c.claim}</span>
-                      <div className="flex flex-wrap items-center gap-1 shrink-0">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1">
                         {c.sourceIds.map((sid) => (
                           <span
                             key={sid}
-                            className="font-mono text-xs rounded bg-muted px-1.5 py-0.5"
+                            className="rounded bg-brand/10 px-1.5 py-0.5 font-mono text-xs text-brand"
                           >
                             [{sid}]
                           </span>
@@ -301,6 +391,24 @@ export default function SignalDetailPage({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SignalSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+        <div className="h-8 w-2/3 animate-pulse rounded bg-muted" />
+      </div>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="space-y-3 rounded-xl border bg-card p-6">
+          <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-full animate-pulse rounded bg-muted" />
+          <div className="h-3 w-5/6 animate-pulse rounded bg-muted" />
+        </div>
+      ))}
     </div>
   );
 }

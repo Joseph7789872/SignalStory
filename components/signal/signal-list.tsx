@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { ChevronRight, Plus, Radio, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/signal/status-badge";
 
@@ -55,9 +56,23 @@ export function SignalList({ signals }: { signals: Row[] }) {
 
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          No signals yet. Submit your first one to see the pipeline run.
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Radio className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="font-semibold">No signals yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Submit your first one to see the context-first pipeline run.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/signals/new">
+              <Plus className="h-4 w-4" />
+              New signal
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -81,26 +96,27 @@ export function SignalList({ signals }: { signals: Row[] }) {
         </label>
       )}
       {visible.map((s) => (
-        <div key={s.id} className="relative">
+        <div key={s.id} className="group relative">
           <Link href={`/signals/${s.id}`} className="block">
-            <Card className="transition-colors hover:bg-accent">
-              <CardContent className="flex items-center justify-between gap-3 py-4 pr-12">
+            <Card className="transition-all hover:border-brand/40 hover:shadow-md">
+              <CardContent className="flex items-center justify-between gap-3 py-4 pl-5 pr-12">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="truncate font-semibold">{s.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {new Date(s.createdAt).toLocaleString()}
                     {s.significanceScore !== null &&
                       ` · significance ${s.significanceScore}/100`}
                     {s.costUsd > 0 && ` · $${s.costUsd.toFixed(3)}`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   {s.source !== "MANUAL" && (
                     <Badge variant="outline">
                       {SOURCE_LABEL[s.source] ?? s.source}
                     </Badge>
                   )}
                   <StatusBadge status={s.status} />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>
               </CardContent>
             </Card>
@@ -111,7 +127,7 @@ export function SignalList({ signals }: { signals: Row[] }) {
             title="Delete signal"
             disabled={busyId === s.id}
             onClick={(e) => remove(e, s.id)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
           </button>

@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
 
 type Billing = {
   billingConfigured: boolean;
@@ -89,7 +90,13 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) return <p className="text-muted-foreground">Loading…</p>;
+  if (loading)
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Settings" />
+        <div className="h-48 animate-pulse rounded-xl border bg-card" />
+      </div>
+    );
   if (!data) return <p className="text-destructive">Couldn’t load settings.</p>;
 
   const isOwner = data.role === "OWNER";
@@ -101,7 +108,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      <PageHeader
+        title="Settings"
+        description="Manage your plan, account, and workspace."
+      />
 
       <Tabs defaultValue="billing">
         <TabsList>

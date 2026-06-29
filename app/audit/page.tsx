@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 
 type Log = {
   id: string;
@@ -40,12 +41,10 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Audit log</h1>
-        <p className="text-sm text-muted-foreground">
-          A record of meaningful actions in your workspace.
-        </p>
-      </div>
+      <PageHeader
+        title="Audit log"
+        description="A record of meaningful actions in your workspace."
+      />
 
       <Input
         placeholder="Filter by action (e.g. signal, asset, linkedin)…"

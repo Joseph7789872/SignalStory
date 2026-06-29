@@ -3,15 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AlertCircle, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,16 +65,23 @@ export default function NewSignalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to signals
+        </Link>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight">New signal</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Describe what happened. Be concrete — real numbers, names, and
+          specifics make the difference between a story and slop.
+        </p>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>New signal</CardTitle>
-          <CardDescription>
-            Describe what happened. Be concrete — real numbers, names, and
-            specifics make the difference between a story and slop.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="title">What happened?</Label>
@@ -123,17 +125,30 @@ export default function NewSignalPage() {
                 rows={2}
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                {error}
+              </p>
+            )}
             {quotaMsg && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
                 {quotaMsg}{" "}
-                <Link href="/settings" className="font-medium underline">
+                <Link href="/settings" className="font-medium text-brand underline">
                   Upgrade your plan
                 </Link>{" "}
                 to keep publishing.
               </div>
             )}
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
               {submitting ? "Submitting…" : "Run pipeline"}
             </Button>
           </form>

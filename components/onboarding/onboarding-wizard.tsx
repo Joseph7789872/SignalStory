@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertCircle, Check, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const linesToArray = (s: string) =>
   s.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -222,7 +225,56 @@ export function OnboardingWizard() {
 
   return (
     <div className="space-y-6">
-      {/* Progress */}
+      {/* Stepper */}
+      <nav aria-label="Progress">
+        <ol className="flex items-center">
+          {STEPS.map((label, i) => {
+            const done = i < step;
+            const current = i === step;
+            return (
+              <li
+                key={label}
+                className={cn(
+                  "flex items-center",
+                  i < STEPS.length - 1 && "flex-1",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                      done && "border-brand bg-brand text-brand-foreground",
+                      current && "border-brand text-brand",
+                      !done && !current && "border-border text-muted-foreground",
+                    )}
+                  >
+                    {done ? <Check className="h-4 w-4" /> : i + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      "hidden text-sm font-medium sm:inline",
+                      current ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <span
+                    className={cn(
+                      "mx-2 h-0.5 flex-1 rounded-full transition-colors",
+                      done ? "bg-brand" : "bg-border",
+                    )}
+                    aria-hidden
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+
+      {/* Completeness */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>
@@ -231,9 +283,11 @@ export function OnboardingWizard() {
           <span>Context {completeness}% complete</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-primary transition-all" style={{ width: `${completeness}%` }} />
+          <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${completeness}%` }} />
         </div>
       </div>
+
+      <Card className="space-y-6 p-6 sm:p-8">
 
       {step === 0 && (
         <Section title="What does your company do?" hint="Plain language. This anchors every story.">
@@ -289,7 +343,17 @@ export function OnboardingWizard() {
         </Section>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      </Card>
 
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
@@ -303,6 +367,7 @@ export function OnboardingWizard() {
           </Button>
         </div>
         <Button disabled={busy} onClick={next}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           {step < STEPS.length - 1 ? "Save & continue" : "Finish"}
         </Button>
       </div>

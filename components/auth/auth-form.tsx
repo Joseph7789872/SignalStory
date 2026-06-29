@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isSignup = mode === "signup";
 
@@ -66,13 +68,15 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm shadow-md">
       <CardHeader>
-        <CardTitle>{isSignup ? "Create your account" : "Sign in"}</CardTitle>
+        <CardTitle className="text-2xl">
+          {isSignup ? "Create your account" : "Welcome back"}
+        </CardTitle>
         <CardDescription>
           {isSignup
             ? "Start turning signals into founder-quality content."
-            : "Welcome back to SignalStory."}
+            : "Sign in to your SignalStory workspace."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -82,6 +86,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
+              placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -89,33 +95,83 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {isSignup && (
+              <p className="text-xs text-muted-foreground">
+                At least 6 characters.
+              </p>
+            )}
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {notice && <p className="text-sm text-emerald-600">{notice}</p>}
+          {error && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-success"
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              {notice}
+            </p>
+          )}
           <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "…" : isSignup ? "Sign up" : "Sign in"}
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {busy
+              ? isSignup
+                ? "Creating account…"
+                : "Signing in…"
+              : isSignup
+                ? "Create account"
+                : "Sign in"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           {isSignup ? (
             <>
               Already have an account?{" "}
-              <Link href="/sign-in" className="underline">
+              <Link
+                href="/sign-in"
+                className="font-medium text-brand hover:underline"
+              >
                 Sign in
               </Link>
             </>
           ) : (
             <>
               No account?{" "}
-              <Link href="/sign-up" className="underline">
+              <Link
+                href="/sign-up"
+                className="font-medium text-brand hover:underline"
+              >
                 Sign up
               </Link>
             </>

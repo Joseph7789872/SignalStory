@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LegalFooter } from "@/components/legal-footer";
+import { PublicHeader } from "@/components/marketing/public-header";
 
 // NOTE: Template copy — have counsel review before relying on this in production.
 export const dynamic = "force-dynamic";
@@ -11,21 +12,16 @@ const LAST_UPDATED = "June 25, 2026";
 export default function TermsPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <PublicHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <Link
-          href="/"
-          className="text-sm font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground"
-        >
-          SignalStory
-        </Link>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-tight">
           Terms of Service
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Last updated {LAST_UPDATED}
         </p>
 
-        <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground/90">
+        <div className="mt-8 space-y-6 rounded-2xl border bg-card p-6 text-sm leading-relaxed text-foreground/90 shadow-sm sm:p-8">
           <section className="space-y-2">
             <h2 className="text-lg font-semibold">1. Acceptance</h2>
             <p>
