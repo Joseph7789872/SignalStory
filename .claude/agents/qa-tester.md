@@ -58,14 +58,13 @@ Run these in order. Take a screenshot at each key step and on any failure.
    and an "edited" badge appears.
 5. **JSON-LD** — on the blog asset, expand the JSON-LD section and confirm
    `Article` + `FAQPage` content is present (and the Copy button exists).
-6. **Customer voice** — `/customer-voice`, add an entry; confirm it lists.
-7. **Analytics** — `/analytics`, confirm the stat cards and bars render with
+6. **Analytics** — `/analytics`, confirm the stat cards and bars render with
    non-error numbers consistent with the signals you ran.
-8. **Prompts** — `/prompts`, confirm the 6 agents list with an active version;
+7. **Prompts** — `/prompts`, confirm the 6 agents list with an active version;
    create a new version of one agent and activate it (don't need to re-run).
-9. **Delete** — delete a signal from the dashboard via the trash icon; confirm
+8. **Delete** — delete a signal from the dashboard via the trash icon; confirm
    it disappears and (on reload) stays gone.
-10. **Team / invites** — `/team`, invite a second email (e.g.
+9. **Team / invites** — `/team`, invite a second email (e.g.
     `qa-invitee@signalstory.test`); confirm it appears under pending invites.
     (Optionally, in a fresh browser context, sign up that invited email and
     confirm it JOINS the same workspace rather than creating a new one — this is
@@ -77,7 +76,7 @@ End with a concise report:
 - A pass/fail table (one row per numbered step above).
 - For each failure: **what happened**, **what was expected**, **steps to
   reproduce**, and the screenshot reference.
-- A one-line overall verdict (e.g. "9/10 passed; #10 invite-join not verified").
+- A one-line overall verdict (e.g. "8/9 passed; #9 invite-join not verified").
 
 Be specific and skeptical. A blank section, a console error, or a status stuck at
 QUEUED is a failure worth reporting, not glossing over.
