@@ -6,7 +6,9 @@ import type { MemoryKind } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireOwner } from "@/lib/auth";
 import { chunkText } from "@/lib/knowledge/chunk";
+import { fetchUrlText } from "@/lib/knowledge/htmlToText";
 import { embed, toVectorLiteral } from "@/lib/agents/embeddings";
+import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -39,22 +41,6 @@ const CreateInput = z
     message: "Provide text (≥20 chars) or a sourceUrl to fetch",
   });
 
-/** Minimal, dependency-free HTML → text for fetched pages (blogs/changelogs). */
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<\/(p|div|h[1-6]|li|br|section|article)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 export async function GET() {
   let ctx;
   try {
@@ -63,7 +49,7 @@ export async function GET() {
     return ownerError(e);
   }
   const docs = await prisma.memoryDoc.findMany({
-    where: { orgId: ctx.org.id },
+    where: { orgId: ctx.org.id, deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -108,17 +94,7 @@ export async function POST(req: Request) {
   // Fetch + extract if only a URL was given.
   if (!text && sourceUrl) {
     try {
-      const res = await fetch(sourceUrl, {
-        headers: { "user-agent": "SignalStoryBot/1.0" },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!res.ok) {
-        return NextResponse.json(
-          { error: `Could not fetch URL (HTTP ${res.status})` },
-          { status: 422 },
-        );
-      }
-      text = htmlToText(await res.text()).slice(0, 200_000);
+      text = await fetchUrlText(sourceUrl);
     } catch (err) {
       return NextResponse.json(
         { error: "Failed to fetch URL", details: err instanceof Error ? err.message : String(err) },
@@ -169,6 +145,15 @@ export async function POST(req: Request) {
     `;
   }
 
+  writeAudit({
+    orgId: ctx.org.id,
+    actor: ctx.user,
+    action: "knowledge.created",
+    resourceType: "MemoryDoc",
+    resourceId: doc.id,
+    metadata: { title, kind },
+  });
+
   return NextResponse.json({ id: doc.id, chunks: chunks.length });
 }
 
@@ -181,7 +166,17 @@ export async function DELETE(req: Request) {
   }
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  // Chunks cascade on the FK (onDelete: Cascade).
-  await prisma.memoryDoc.deleteMany({ where: { id, orgId: ctx.org.id } });
+  // Soft delete (recoverable from Trash); chunks stay until purge.
+  await prisma.memoryDoc.updateMany({
+    where: { id, orgId: ctx.org.id, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  writeAudit({
+    orgId: ctx.org.id,
+    actor: ctx.user,
+    action: "knowledge.deleted",
+    resourceType: "MemoryDoc",
+    resourceId: id,
+  });
   return NextResponse.json({ ok: true });
 }

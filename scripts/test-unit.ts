@@ -13,6 +13,8 @@ process.env.STRIPE_PRICE_PRO = "price_test_pro";
 
 import { encryptSecret, decryptSecret } from "../lib/crypto";
 import { chunkText } from "../lib/knowledge/chunk";
+import { htmlToText } from "../lib/knowledge/htmlToText";
+import { bucketKey, bucketSeries } from "../lib/analytics/buckets";
 import {
   toPlainText,
   toMarkdown,
@@ -108,6 +110,38 @@ async function main() {
   check("empty input → []", chunkText("").length === 0);
   check("single word → 1 chunk", chunkText("word").length === 1 && chunkText("word")[0].includes("word"));
   check("huge paragraph hard-splits", chunkText("x".repeat(10_000)).length > 1);
+
+  // --- lib/knowledge/htmlToText ---
+  console.log("\nknowledge/htmlToText:");
+  const ht = htmlToText("<style>a{}</style><script>bad()</script><p>Hello &amp; world</p>");
+  check("strips script/style", !ht.includes("bad()") && !ht.includes("a{}"));
+  check("decodes entities", ht.includes("Hello & world"));
+  check("breaks blocks onto lines", htmlToText("<p>a</p><p>b</p>").includes("\n"));
+
+  // --- lib/analytics/buckets ---
+  console.log("\nanalytics/buckets:");
+  check("day bucket", bucketKey("2026-06-25T12:00:00Z", "day") === "2026-06-25");
+  check("month bucket", bucketKey("2026-06-25T12:00:00Z", "month") === "2026-06");
+  const wk = bucketKey("2026-06-25T12:00:00Z", "week");
+  const wkDate = new Date(`${wk}T00:00:00Z`);
+  const refMs = new Date("2026-06-25T12:00:00Z").getTime();
+  check("week bucket is a Monday", wkDate.getUTCDay() === 1);
+  check(
+    "week bucket ≤ date and within 7 days",
+    wkDate.getTime() <= refMs && refMs - wkDate.getTime() < 7 * 86_400_000,
+  );
+  const series = bucketSeries(
+    [{ t: "2026-06-01" }, { t: "2026-06-20" }, { t: "2026-07-02" }],
+    (r) => r.t,
+    "month",
+  );
+  check(
+    "bucketSeries groups + orders by month",
+    series.length === 2 &&
+      series[0].key === "2026-06" &&
+      series[0].rows.length === 2 &&
+      series[1].key === "2026-07",
+  );
 
   // --- summary ---
   console.log("");

@@ -16,6 +16,8 @@ type Post = {
   status: "SCHEDULED" | "POSTED" | "CANCELED";
   note: string | null;
   postedAt: string | null;
+  autopublish: boolean;
+  publishError: string | null;
   title: string;
 };
 
@@ -115,9 +117,15 @@ export default function CalendarPage() {
                     })}
                   </span>
                   <Badge variant="outline">{CHANNEL_LABEL[p.channel]}</Badge>
+                  {p.autopublish && <Badge variant="secondary">auto</Badge>}
                   <Link href={`/signals/${p.signalId}`} className="flex-1 hover:underline">
                     {p.title}
                   </Link>
+                  {p.publishError && (
+                    <span className="text-xs text-destructive" title={p.publishError}>
+                      publish failed
+                    </span>
+                  )}
                   <Badge variant={STATUS_VARIANT[p.status] ?? "secondary"}>
                     {p.status}
                   </Badge>

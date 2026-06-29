@@ -62,7 +62,7 @@ export async function retrieveProof(
              (1 - (c.embedding <=> ${lit}::vector)) AS score
       FROM "MemoryChunk" c
       JOIN "MemoryDoc" d ON d.id = c."docId"
-      WHERE c."orgId" = ${orgId} AND c.embedding IS NOT NULL
+      WHERE c."orgId" = ${orgId} AND c.embedding IS NOT NULL AND d."deletedAt" IS NULL
       ORDER BY c.embedding <=> ${lit}::vector ASC
       LIMIT ${k}
     `;

@@ -24,7 +24,7 @@ export default async function DashboardPage() {
 
   const [signals, completeness] = await Promise.all([
     prisma.signal.findMany({
-      where: { orgId: ctx.org.id },
+      where: { orgId: ctx.org.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),

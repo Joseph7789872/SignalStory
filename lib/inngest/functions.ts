@@ -3,6 +3,11 @@ import { runPipeline, type StepRunner } from "@/lib/pipeline/orchestrator";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { contentReadyEmail, scheduledDigestEmail } from "@/lib/email/templates";
+import { encryptSecret, decryptSecret } from "@/lib/crypto";
+import { publishText, refresh } from "@/lib/social/linkedin";
+import { toPlainText } from "@/lib/content/serialize";
+import { writeAudit } from "@/lib/audit";
+import { logError } from "@/lib/log";
 
 const CHANNEL_LABEL: Record<string, string> = {
   LINKEDIN_FOUNDER: "LinkedIn",
@@ -113,4 +118,92 @@ export const scheduledPostsDigestFn = inngest.createFunction(
   },
 );
 
-export const functions = [runPipelineFn, scheduledPostsDigestFn];
+/**
+ * Auto-publish due LinkedIn posts. Runs every 5 minutes: each due ScheduledPost
+ * with autopublish=true is posted via the LinkedIn API and flipped to POSTED.
+ * Each post has its own try/catch so one failure can't block the batch. No-op
+ * when LinkedIn is unconfigured (publishText will just error → publishError).
+ */
+export const publishDuePostsFn = inngest.createFunction(
+  { id: "publish-due-posts", triggers: [{ cron: "*/5 * * * *" }] },
+  async ({ step }) => {
+    return await step.run("publish", async () => {
+      const now = new Date();
+      const due = await prisma.scheduledPost.findMany({
+        where: {
+          status: "SCHEDULED",
+          autopublish: true,
+          channel: "LINKEDIN_FOUNDER",
+          scheduledFor: { lte: now },
+        },
+        include: { asset: { select: { body: true, editedBody: true } } },
+        take: 50,
+      });
+
+      let posted = 0;
+      let failed = 0;
+      for (const post of due) {
+        try {
+          const account = await prisma.socialAccount.findUnique({
+            where: { orgId_provider: { orgId: post.orgId, provider: "LINKEDIN" } },
+          });
+          if (!account || account.status === "REVOKED") {
+            throw new Error("LinkedIn account not connected");
+          }
+
+          let token = decryptSecret(account.accessToken);
+          // Refresh if within 5 minutes of expiry and a refresh token exists.
+          if (account.expiresAt && account.expiresAt.getTime() < Date.now() + 5 * 60 * 1000) {
+            if (account.refreshToken) {
+              const r = await refresh(decryptSecret(account.refreshToken));
+              token = r.accessToken;
+              await prisma.socialAccount.update({
+                where: { id: account.id },
+                data: {
+                  accessToken: encryptSecret(token),
+                  expiresAt: new Date(Date.now() + r.expiresIn * 1000),
+                },
+              });
+            } else {
+              await prisma.socialAccount.update({
+                where: { id: account.id },
+                data: { status: "EXPIRED" },
+              });
+              throw new Error("LinkedIn token expired — reconnect required");
+            }
+          }
+
+          const body = post.asset.editedBody ?? post.asset.body;
+          const text = toPlainText("LINKEDIN_FOUNDER", body);
+          const { id } = await publishText(token, account.externalId, text);
+
+          await prisma.scheduledPost.update({
+            where: { id: post.id },
+            data: { status: "POSTED", postedAt: new Date(), publishError: null },
+          });
+          writeAudit({
+            orgId: post.orgId,
+            action: "post.published",
+            resourceType: "ScheduledPost",
+            resourceId: post.id,
+            metadata: { provider: "LINKEDIN", externalId: id },
+          });
+          posted += 1;
+        } catch (err) {
+          failed += 1;
+          logError("publish", err, { scheduledPostId: post.id });
+          await prisma.scheduledPost.update({
+            where: { id: post.id },
+            data: {
+              attempts: { increment: 1 },
+              publishError: err instanceof Error ? err.message : String(err),
+            },
+          });
+        }
+      }
+      return { posted, failed, due: due.length };
+    });
+  },
+);
+
+export const functions = [runPipelineFn, scheduledPostsDigestFn, publishDuePostsFn];

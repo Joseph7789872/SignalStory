@@ -47,6 +47,8 @@ export async function GET(req: Request) {
     status: r.status,
     note: r.note,
     postedAt: r.postedAt,
+    autopublish: r.autopublish,
+    publishError: r.publishError,
     title: (r.asset.signal?.rawInput as { title?: string } | null)?.title ?? "Signal",
   }));
 
@@ -57,6 +59,7 @@ const CreateInput = z.object({
   assetId: z.string().min(1),
   scheduledFor: z.string().datetime(),
   note: z.string().max(2000).optional(),
+  autopublish: z.boolean().optional(),
 });
 
 // POST { assetId, scheduledFor, note? } — schedule an asset (org-scoped).
@@ -82,6 +85,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
+  // Auto-publish is only valid for LinkedIn (the one supported network).
+  const autopublish =
+    parsed.data.autopublish === true && asset.channel === "LINKEDIN_FOUNDER";
+
   const post = await prisma.scheduledPost.create({
     data: {
       orgId: ctx.org.id,
@@ -89,6 +96,7 @@ export async function POST(req: Request) {
       channel: asset.channel,
       scheduledFor: new Date(parsed.data.scheduledFor),
       note: parsed.data.note,
+      autopublish,
       createdById: ctx.user.id,
     },
   });

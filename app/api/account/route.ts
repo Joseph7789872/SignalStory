@@ -18,7 +18,7 @@ export async function GET() {
   }
   const orgId = ctx.org.id;
 
-  const [org, members, signals, memoryDocs, customerVoice] = await Promise.all([
+  const [org, members, signals, memoryDocs] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: orgId },
       include: {
@@ -43,7 +43,6 @@ export async function GET() {
       where: { orgId },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.customerVoiceEntry.findMany({ where: { orgId } }),
   ]);
 
   // Connection signing secrets are intentionally NOT exported.
@@ -54,7 +53,6 @@ export async function GET() {
       members,
       signals,
       memoryDocs,
-      customerVoice,
     },
     null,
     2,

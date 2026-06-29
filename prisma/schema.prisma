@@ -34,7 +34,6 @@ model Organization {
   founder   FounderProfile?
   brandVoice BrandVoice?
   editorial EditorialStrategy?
-  customerVoice CustomerVoiceEntry[]
   invites   OrganizationInvite[]
   integrations IntegrationConnection[]
   signals   Signal[]
@@ -42,6 +41,8 @@ model Organization {
   memoryDocs MemoryDoc[]
   subscription Subscription?
   scheduledPosts ScheduledPost[]
+  socialAccounts SocialAccount[]
+  auditLogs    AuditLog[]
 }
 
 enum InviteStatus {
@@ -168,20 +169,6 @@ model EditorialStrategy {
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }
 
-// Schema defined now; populated in Phase 2.
-model CustomerVoiceEntry {
-  id        String   @id @default(cuid())
-  orgId     String
-  kind      String // discovery_call | objection | testimonial | review | churn | support
-  text      String
-  source    String   @default("")
-  createdAt DateTime @default(now())
-
-  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-
-  @@index([orgId])
-}
-
 // --- Integrations / event ingestion (V3) ---
 
 enum IntegrationProvider {
@@ -274,6 +261,7 @@ model Signal {
   narrativeBrief   Json? // [4] NarrativeBrief
   retrievedProof   Json? // [R] resolved memory sources cited in the brief (proof library)
   costUsd          Float        @default(0)
+  deletedAt        DateTime? // V_Phase3: soft delete (Trash/restore)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -284,6 +272,7 @@ model Signal {
   feedback Feedback[]
 
   @@index([orgId, status])
+  @@index([orgId, deletedAt])
   @@index([userId])
 }
 
@@ -311,6 +300,7 @@ model ContentAsset {
   reviewStatus  ReviewStatus @default(PENDING)
   editedBody    Json?
   regenCount    Int          @default(0)
+  deletedAt     DateTime? // V_Phase3: soft delete
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -334,6 +324,10 @@ model ScheduledPost {
   status       String    @default("SCHEDULED") // SCHEDULED | POSTED | CANCELED
   note         String?
   postedAt     DateTime?
+  // V_Phase3: optional auto-publish (LinkedIn) by the publish-due-posts worker.
+  autopublish  Boolean   @default(false)
+  publishError String?
+  attempts     Int       @default(0)
   createdById  String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -343,6 +337,52 @@ model ScheduledPost {
 
   @@index([orgId, scheduledFor])
   @@index([assetId])
+}
+
+// --- V_Phase3: outbound social publishing (OAuth) ---
+// Dedicated outbound model (kept separate from the inbound IntegrationConnection,
+// which is built around webhookToken + signing secrets). Tokens are AES-256-GCM
+// encrypted at rest (lib/crypto.ts, ENCRYPTION_KEY).
+enum SocialProvider {
+  LINKEDIN
+}
+
+model SocialAccount {
+  id           String         @id @default(cuid())
+  orgId        String
+  provider     SocialProvider
+  status       String         @default("ACTIVE") // ACTIVE | EXPIRED | REVOKED
+  externalId   String // provider member id/URN, e.g. urn:li:person:xxxx
+  displayName  String         @default("")
+  accessToken  String // encrypted
+  refreshToken String? // encrypted (LinkedIn issues only with approval)
+  expiresAt    DateTime?
+  scopes       String         @default("")
+  createdById  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, provider])
+  @@index([orgId])
+}
+
+// --- V_Phase3: append-only audit log ---
+model AuditLog {
+  id           String   @id @default(cuid())
+  orgId        String
+  actorId      String?
+  actorEmail   String?
+  action       String // "signal.deleted" | "asset.approved" | "linkedin.connected" | ...
+  resourceType String?
+  resourceId   String?
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
 }
 
 model AgentRun {
@@ -427,6 +467,7 @@ model MemoryDoc {
   sourceUrl   String?
   rawText     String // full source text (audit + re-chunk)
   createdById String?
+  deletedAt   DateTime? // V_Phase3: soft delete
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

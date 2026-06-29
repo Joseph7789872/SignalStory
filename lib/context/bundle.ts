@@ -28,8 +28,6 @@ export async function buildContextBundle(orgId: string): Promise<string> {
       founder: true,
       brandVoice: true,
       editorial: true,
-      // Ordered for a stable (cacheable) prefix.
-      customerVoice: { orderBy: { createdAt: "asc" }, take: 100 },
     },
   });
 
@@ -37,7 +35,6 @@ export async function buildContextBundle(orgId: string): Promise<string> {
   const f = org.founder;
   const b = org.brandVoice;
   const e = org.editorial;
-  const voice = org.customerVoice ?? [];
 
   const beliefs = (f?.beliefs as string[] | undefined) ?? [];
   const frameworks = (f?.frameworks as Framework[] | undefined) ?? [];
@@ -106,14 +103,6 @@ export async function buildContextBundle(orgId: string): Promise<string> {
       ? section(
           "Founder writing samples (match this voice)",
           samples.map((s) => `### ${s.label}\n${s.text}`).join("\n\n"),
-        )
-      : "",
-    voice.length
-      ? section(
-          "Customer voice (real language — prefer these phrasings over generic ones)",
-          voice
-            .map((v) => `- [${v.kind}] "${v.text}"${v.source ? ` (${v.source})` : ""}`)
-            .join("\n"),
         )
       : "",
   ];

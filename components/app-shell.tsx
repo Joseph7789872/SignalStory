@@ -24,12 +24,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Context
             </Link>
             <Link
-              href="/customer-voice"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Customer voice
-            </Link>
-            <Link
               href="/integrations"
               className="text-muted-foreground hover:text-foreground"
             >
@@ -64,6 +58,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="text-muted-foreground hover:text-foreground"
             >
               Team
+            </Link>
+            <Link
+              href="/audit"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Audit
+            </Link>
+            <Link
+              href="/trash"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Trash
             </Link>
             <Link
               href="/settings"

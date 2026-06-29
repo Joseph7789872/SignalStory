@@ -16,16 +16,19 @@ function getRedis(): Redis | null {
   return redis;
 }
 
-export type LimiterName = "signals" | "webhook";
+export type LimiterName = "signals" | "webhook" | "enrich";
 
 function getLimiter(name: LimiterName, r: Redis): Ratelimit {
   let lim = limiters.get(name);
   if (lim) return lim;
-  // Sliding-window budgets. signals: per-org submissions; webhook: per-IP flood guard.
+  // Sliding-window budgets. signals: per-org submissions; webhook: per-IP flood
+  // guard; enrich: per-org URL-scrape + LLM (expensive, so keep it tight).
   const limiter =
     name === "signals"
       ? Ratelimit.slidingWindow(30, "1 h")
-      : Ratelimit.slidingWindow(120, "1 m");
+      : name === "webhook"
+        ? Ratelimit.slidingWindow(120, "1 m")
+        : Ratelimit.slidingWindow(10, "1 h");
   lim = new Ratelimit({ redis: r, limiter, prefix: `rl:${name}` });
   limiters.set(name, lim);
   return lim;
