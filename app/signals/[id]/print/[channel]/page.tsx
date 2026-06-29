@@ -23,11 +23,12 @@ const PRINT_CSS = `
 @media print { .no-print { display: none !important; } .prose { padding-top: .5rem; } }
 `;
 
-export default async function PrintAssetPage({
-  params,
-}: {
-  params: { id: string; channel: string };
-}) {
+export default async function PrintAssetPage(
+  props: {
+    params: Promise<{ id: string; channel: string }>;
+  }
+) {
+  const params = await props.params;
   let ctx;
   try {
     ctx = await requireAuthContext();

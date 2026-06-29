@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -55,11 +55,12 @@ type Signal = {
   assets: any[];
 };
 
-export default function SignalDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function SignalDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = use(props.params);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -134,7 +135,6 @@ export default function SignalDetailPage({
           <StatusBadge status={signal.status} />
         </div>
       </div>
-
       {/* Running banner */}
       {running && (
         <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
@@ -144,7 +144,6 @@ export default function SignalDetailPage({
           </span>
         </div>
       )}
-
       {/* Rejected */}
       {signal.status === "REJECTED" && (
         <Card className="border-warning/40 bg-warning/10">
@@ -159,7 +158,6 @@ export default function SignalDetailPage({
           </CardHeader>
         </Card>
       )}
-
       {/* Failed */}
       {signal.status === "FAILED" && (
         <Card className="border-destructive/40 bg-destructive/5">
@@ -172,7 +170,6 @@ export default function SignalDetailPage({
           </CardHeader>
         </Card>
       )}
-
       {/* Significance */}
       {score && (
         <Card>
@@ -236,7 +233,6 @@ export default function SignalDetailPage({
           </CardContent>
         </Card>
       )}
-
       {/* Story angles */}
       {angles?.angles?.length > 0 && (
         <Card>
@@ -270,7 +266,6 @@ export default function SignalDetailPage({
           </CardContent>
         </Card>
       )}
-
       {/* Narrative brief */}
       {brief && (
         <Card>
@@ -297,7 +292,6 @@ export default function SignalDetailPage({
           </CardContent>
         </Card>
       )}
-
       {/* Proof library */}
       {Array.isArray(signal.retrievedProof) && signal.retrievedProof.length > 0 && (() => {
         const proof = signal.retrievedProof as ProofSource[];
@@ -381,7 +375,6 @@ export default function SignalDetailPage({
           </Card>
         );
       })()}
-
       {/* Assets */}
       {signal.assets?.length > 0 && (
         <div className="space-y-4">

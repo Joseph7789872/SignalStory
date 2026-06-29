@@ -6,10 +6,8 @@ import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let ctx;
   try {
     ctx = await requireAuthContext();
@@ -32,10 +30,8 @@ export async function GET(
   return NextResponse.json({ signal });
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let ctx;
   try {
     ctx = await requireAuthContext();
