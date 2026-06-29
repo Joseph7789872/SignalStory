@@ -1,4 +1,5 @@
 import { Channel, type Prisma } from "@prisma/client";
+import { NonRetriableError } from "inngest";
 
 import { prisma } from "@/lib/db";
 import { buildContextBundle } from "@/lib/context/bundle";
@@ -56,7 +57,12 @@ async function settleCost(signalId: string): Promise<void> {
     data: { costUsd: total },
   });
   if (total > MAX_COST) {
-    throw new Error(
+    // Non-retriable: a cost-cap breach is terminal. Throwing a plain Error here
+    // made Inngest treat it as a transient failure and replay the run, which
+    // re-executed the (expensive) uncheckpointed stage and pushed spend further
+    // past the cap. NonRetriableError fails the run immediately; under the
+    // in-process passthrough runner it behaves like any thrown error.
+    throw new NonRetriableError(
       `Cost guardrail exceeded: $${total.toFixed(4)} > $${MAX_COST.toFixed(2)}`,
     );
   }
@@ -278,52 +284,72 @@ export async function runPipeline(
       where: { id: signalId },
       data: { status: "EDITING" },
     });
+    // Each LLM call is its own memoized step, so a durable retry resumes at the
+    // failed sub-step instead of re-running the first edit + a *fresh* (extra)
+    // regenerate. This is what bounds it to exactly one regenerate per asset on
+    // the durable path — splitting was required; a single combined step replays
+    // the regenerate on every retry.
     for (const { channel } of CHANNELS) {
-      await step.run(`edit-${channel}`, async () => {
-        const asset = await prisma.contentAsset.findUniqueOrThrow({
+      const asset = await step.run(`edit-${channel}-load`, async () => {
+        const a = await prisma.contentAsset.findUniqueOrThrow({
           where: { signalId_channel: { signalId, channel } },
         });
+        return { id: a.id, body: a.body as unknown };
+      });
 
-        let verdict = await runAntiSlopEditor({
+      const verdict1 = await step.run(`edit-${channel}-review`, async () => {
+        const v = await runAntiSlopEditor({
           signalId,
           context,
           brief,
           channel,
           assetBody: asset.body,
         });
-        let body: unknown = asset.body;
-        let regenerated = false;
+        await settleCost(signalId);
+        return v;
+      });
 
-        if (!verdict.passes) {
+      let finalBody: unknown = asset.body;
+      let finalVerdict = verdict1;
+      let regenerated = false;
+
+      if (!verdict1.passes) {
+        finalBody = await step.run(`edit-${channel}-regen`, async () => {
           const fixed = await regenerateChannel({
             signalId,
             context,
             brief,
             channel,
-            guidance: verdict.regenerateGuidance,
+            guidance: verdict1.regenerateGuidance,
           });
-          body = fixed;
-          regenerated = true;
-          verdict = await runAntiSlopEditor({
+          await settleCost(signalId);
+          return fixed as unknown;
+        });
+        regenerated = true;
+        finalVerdict = await step.run(`edit-${channel}-rereview`, async () => {
+          const v = await runAntiSlopEditor({
             signalId,
             context,
             brief,
             channel,
-            assetBody: body,
+            assetBody: finalBody,
           });
-        }
+          await settleCost(signalId);
+          return v;
+        });
+      }
 
+      await step.run(`edit-${channel}-persist`, async () => {
         await prisma.contentAsset.update({
           where: { id: asset.id },
           data: {
-            body: asJson(body),
-            antiSlopScore: verdict.score,
-            antiSlopDetail: asJson(verdict),
+            body: asJson(finalBody),
+            antiSlopScore: finalVerdict.score,
+            antiSlopDetail: asJson(finalVerdict),
             regenCount: regenerated ? 1 : 0,
-            reviewStatus: verdict.passes ? "PENDING" : "NEEDS_WORK",
+            reviewStatus: finalVerdict.passes ? "PENDING" : "NEEDS_WORK",
           },
         });
-        await settleCost(signalId);
       });
     }
 

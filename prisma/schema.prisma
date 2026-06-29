@@ -337,6 +337,9 @@ model ScheduledPost {
 
   @@index([orgId, scheduledFor])
   @@index([assetId])
+  // Serves the cross-tenant due-posts / digest scans that filter by
+  // status + scheduledFor without an orgId (publish-due-posts, daily digest).
+  @@index([status, scheduledFor])
 }
 
 // --- V_Phase3: outbound social publishing (OAuth) ---
