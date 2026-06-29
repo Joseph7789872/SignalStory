@@ -82,3 +82,57 @@ export async function assertWithinQuota(orgId: string): Promise<void> {
 export async function isOverSpendCap(orgId: string): Promise<boolean> {
   return (await getUsage(orgId)).overSpendCap;
 }
+
+// A reservation is valid for at most this long; a pipeline run that exceeds it
+// (crash/stuck) stops counting against the cap so the org isn't blocked forever.
+const RESERVATION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Atomically reserve `estimateUsd` against the org's hard spend cap. Uses a
+ * per-org Postgres advisory lock so concurrent runs serialize their
+ * check-and-reserve: committed spend + outstanding reservations + this estimate
+ * must stay within the cap, otherwise the reservation is refused. This closes
+ * the TOCTOU window where N concurrent signals each read "under cap" and
+ * collectively overshoot. Returns true if reserved (caller may proceed).
+ */
+export async function reserveSpend(
+  orgId: string,
+  signalId: string,
+  estimateUsd: number,
+): Promise<boolean> {
+  const sub = await prisma.subscription.findUnique({ where: { orgId } });
+  const plan = getPlan(sub?.plan);
+  const onStripePeriod = plan.id !== "FREE" && sub?.currentPeriodStart;
+  const periodStart = onStripePeriod ? sub!.currentPeriodStart : startOfMonthUtc();
+  const cap = plan.hardSpendCapUsd;
+  const cutoff = new Date(Date.now() - RESERVATION_TTL_MS);
+
+  return prisma.$transaction(async (tx) => {
+    // Serialize concurrent reservations for this org.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${orgId}))`;
+    // Drop this org's expired holds so they don't block forever.
+    await tx.spendReservation.deleteMany({
+      where: { orgId, createdAt: { lt: cutoff } },
+    });
+    const spendAgg = await tx.agentRun.aggregate({
+      _sum: { costUsd: true },
+      where: { signal: { orgId }, createdAt: { gte: periodStart } },
+    });
+    const resAgg = await tx.spendReservation.aggregate({
+      _sum: { amountUsd: true },
+      where: { orgId, createdAt: { gte: cutoff } },
+    });
+    const projected =
+      (spendAgg._sum.costUsd ?? 0) + (resAgg._sum.amountUsd ?? 0);
+    if (projected + estimateUsd > cap) return false;
+    await tx.spendReservation.create({
+      data: { orgId, signalId, amountUsd: estimateUsd },
+    });
+    return true;
+  });
+}
+
+/** Release a run's reservation once its real cost has settled (success path). */
+export async function releaseSpend(signalId: string): Promise<void> {
+  await prisma.spendReservation.deleteMany({ where: { signalId } });
+}

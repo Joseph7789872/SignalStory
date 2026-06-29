@@ -13,7 +13,7 @@ import {
 } from "@/lib/agents/channelTransformer";
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
 import { retrieveProof } from "@/lib/knowledge/retrieve";
-import { isOverSpendCap } from "@/lib/billing/quota";
+import { isOverSpendCap, reserveSpend, releaseSpend } from "@/lib/billing/quota";
 import { logError } from "@/lib/log";
 import { EMBEDDING_MODEL, estimateEmbeddingCostUsd } from "@/lib/agents/embeddings";
 import type {
@@ -100,19 +100,20 @@ export async function runPipeline(
   }
 
   try {
-    // Defense-in-depth: if the org was already over its per-period hard spend
-    // cap before this signal started, don't burn more LLM budget. Wrapped in a
-    // step so it's evaluated once at the true start (not on every Inngest
-    // re-invocation, which would otherwise strand a signal once its own cost
-    // tipped the org over the cap). Complements the per-run settleCost guardrail.
-    const overCap = await step.run("spend-cap-check", async () => {
+    // Atomically reserve this run's worst-case cost against the org hard cap.
+    // The reservation serializes concurrent runs (per-org advisory lock) so they
+    // can't each read "under cap" and collectively overshoot — the TOCTOU window
+    // the plain start-check left open. Memoized in a step so it reserves exactly
+    // once at the true start (not on every Inngest re-invocation). The hold is
+    // released on every clean exit below; a crash self-heals via the TTL.
+    const reserved = await step.run("spend-reserve", async () => {
       const sig = await prisma.signal.findUnique({
         where: { id: signalId },
         select: { orgId: true },
       });
-      return sig ? await isOverSpendCap(sig.orgId) : false;
+      return sig ? await reserveSpend(sig.orgId, signalId, MAX_COST) : false;
     });
-    if (overCap) {
+    if (!reserved) {
       await prisma.signal.update({
         where: { id: signalId },
         data: {
@@ -216,7 +217,10 @@ export async function runPipeline(
       }
       return { skip: false as const, score };
     });
-    if (gate.skip) return;
+    if (gate.skip) {
+      await releaseSpend(signalId); // gate rejected — free the hold
+      return;
+    }
     const score = gate.score;
 
     // [3] Story Finder
@@ -273,6 +277,7 @@ export async function runPipeline(
       return sig ? await isOverSpendCap(sig.orgId) : false;
     });
     if (overCapNow) {
+      await releaseSpend(signalId);
       await prisma.signal.update({
         where: { id: signalId },
         data: {
@@ -376,6 +381,7 @@ export async function runPipeline(
     }
 
     await step.run("finalize", async () => {
+      await releaseSpend(signalId); // real costs have settled; free the hold
       await prisma.signal.update({
         where: { id: signalId },
         data: { status: "READY" },
