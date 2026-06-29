@@ -395,9 +395,14 @@ model AuditLog {
 }
 
 model AgentRun {
+  // signalId/orgId: a run is attributed to a Signal (the 6 pipeline agents) OR,
+  // when there is no signal (e.g. document-ingestion embeddings), directly to an
+  // org via orgId. Exactly one is set. getUsage sums both so org-level spend
+  // (incl. ingestion) is metered against the spend cap.
   id            String   @id @default(cuid())
-  signalId      String
-  agent         String // event_listener | significance_scorer | ...
+  signalId      String?
+  orgId         String?
+  agent         String // event_listener | significance_scorer | embedder | ...
   model         String
   promptVersion String
   inputTokens   Int      @default(0)
@@ -409,9 +414,10 @@ model AgentRun {
   error         String?
   createdAt     DateTime @default(now())
 
-  signal Signal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  signal Signal? @relation(fields: [signalId], references: [id], onDelete: Cascade)
 
   @@index([signalId])
+  @@index([orgId, createdAt])
 }
 
 enum FeedbackDecision {
