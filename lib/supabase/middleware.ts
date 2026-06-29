@@ -8,9 +8,54 @@ type CookieToSet = { name: string; value: string; options?: CookieOptions };
 const PROTECTED =
   /^\/(dashboard|signals|context|onboarding|analytics|prompts|team|integrations|knowledge|settings|calendar|audit|trash)(\/|$)|^\/api\/(signals|assets|context|analytics|prompts|team|integrations|knowledge|schedule|social|audit|trash)(\/|$)/;
 
-/** Refreshes the Supabase session cookie and gates protected routes. */
+/**
+ * Per-request Content-Security-Policy. script-src uses a nonce + strict-dynamic
+ * (Next auto-applies the nonce to its own scripts when it sees this header on
+ * the request). style-src keeps 'unsafe-inline' — Next/Tailwind inject inline
+ * styles and nonces on styles aren't practical. connect-src allows Supabase
+ * (https + realtime wss) and Sentry. Dev relaxes script/connect for HMR/eval.
+ */
+function contentSecurityPolicy(nonce: string): string {
+  const isDev = process.env.NODE_ENV !== "production";
+  let supabaseHost = "";
+  try {
+    supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host;
+  } catch {
+    /* unset/invalid — connect-src just omits it */
+  }
+  const supabase = supabaseHost
+    ? `https://${supabaseHost} wss://${supabaseHost}`
+    : "";
+
+  return [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob: https:`,
+    `font-src 'self' data:`,
+    `connect-src 'self' ${supabase} https://*.sentry.io https://*.ingest.sentry.io${isDev ? " ws: wss:" : ""}`
+      .replace(/\s+/g, " ")
+      .trim(),
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `object-src 'none'`,
+  ].join("; ");
+}
+
+/** Refreshes the Supabase session cookie, sets a nonce CSP, gates protected routes. */
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Edge runtime: use Web Crypto + btoa (no Node Buffer).
+  const nonce = btoa(crypto.randomUUID());
+  const csp = contentSecurityPolicy(nonce);
+
+  // Pass the nonce + CSP on the request so Next can nonce its own scripts, and
+  // a server component can read the nonce via headers().get("x-nonce").
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +69,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -42,8 +87,11 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     url.searchParams.set("redirect", path);
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set("content-security-policy", csp);
+    return redirect;
   }
 
+  response.headers.set("content-security-policy", csp);
   return response;
 }
