@@ -11,6 +11,15 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+// Force every route to render per-request. The CSP (proxy.ts) stamps a fresh
+// per-request nonce into both the response header and Next's script tags; that
+// only lines up when the HTML is generated per request. Statically prerendered
+// pages bake their script tags at build time without the runtime nonce, so
+// `strict-dynamic` blocks their chunks and the page never hydrates (the New
+// Signal form, Settings, Calendar, Trash, Audit). Dynamic rendering keeps the
+// nonce consistent. (This is why it worked in `next dev` but broke in prod.)
+export const dynamic = "force-dynamic";
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const DESCRIPTION =
   "Turn company signals into founder-quality thought leadership. Context first, writing last.";
