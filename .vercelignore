@@ -1,0 +1,9 @@
+# Never ship local env files (secrets) — Vercel injects env vars itself.
+.env
+.env.*
+!.env.example
+
+# Local dev/debug artifacts that have no place in the deployment bundle.
+screenshots/
+scratchpad-*.log
+.vercel
