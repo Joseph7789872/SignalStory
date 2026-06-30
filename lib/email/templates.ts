@@ -29,26 +29,6 @@ function layout(heading: string, bodyHtml: string, ctaLabel: string, ctaUrl: str
   </table></body></html>`;
 }
 
-export function inviteEmail(opts: {
-  orgName: string;
-  role: string;
-  inviteToken: string;
-}): { subject: string; html: string; text: string } {
-  const url = appUrl(`/sign-up?invite=${encodeURIComponent(opts.inviteToken)}`);
-  const org = escapeHtml(opts.orgName);
-  const role = escapeHtml(opts.role.toLowerCase());
-  return {
-    subject: `You're invited to ${opts.orgName} on SignalStory`,
-    html: layout(
-      `Join ${org} on SignalStory`,
-      `<p>You've been invited to collaborate in <strong>${org}</strong> as a <strong>${role}</strong>. Sign up with this email address and you'll join the workspace automatically.</p>`,
-      "Accept invite",
-      url,
-    ),
-    text: `You've been invited to ${opts.orgName} on SignalStory as a ${role}. Sign up with this email to join: ${url}`,
-  };
-}
-
 export function scheduledDigestEmail(opts: {
   items: { title: string; channel: string; time: string }[];
 }): { subject: string; html: string; text: string } {

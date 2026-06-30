@@ -110,7 +110,7 @@ scripts/            offline schema test + live e2e pipeline test
 
 **V1 (shipped):** manual signals · context layer · significance gate · story/narrative/channel agents · full SEO/GEO blog + LinkedIn + X · anti-slop review with bounded regenerate · approve/reject/regenerate · per-run cost audit · provider-agnostic LLM · Supabase auth + DB.
 
-**V2 (shipped):** durable job queue (Inngest, retryable/resumable per agent stage) · in-app inline editing of every channel · JSON-LD (`Article`+`FAQPage`) on the blog · Customer Voice repository woven into the context bundle · cost/quality analytics dashboard · prompt versioning with per-version feedback performance · multi-user orgs (invites + roles).
+**V2 (shipped):** durable job queue (Inngest, retryable/resumable per agent stage) · in-app inline editing of every channel · JSON-LD (`Article`+`FAQPage`) on the blog · Customer Voice repository woven into the context bundle · cost/quality analytics dashboard · prompt versioning with per-version feedback performance.
 
 **V3 (shipped):** auto-ingestion / event listeners — a provider-agnostic ingestion layer (signature-verified webhooks → dedup → coarse filter → Signal → same pipeline), encrypted connection secrets, and an `/integrations` UI. Manual entry is now just one source among many.
 

@@ -68,7 +68,7 @@ export async function GET() {
 }
 
 // DELETE — permanently remove the organization and all of its data. Cascades to
-// every child record (schema onDelete: Cascade), including team members. The
+// every child record (schema onDelete: Cascade). The
 // authentication identity itself is provider-managed; signing in again would
 // provision a fresh, empty workspace.
 export async function DELETE() {

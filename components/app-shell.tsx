@@ -16,7 +16,6 @@ import {
   ScrollText,
   Settings,
   Trash2,
-  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -50,7 +49,6 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Context", href: "/context", icon: Building2 },
       { label: "Integrations", href: "/integrations", icon: Plug },
-      { label: "Team", href: "/team", icon: Users },
     ],
   },
   {

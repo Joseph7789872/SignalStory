@@ -25,7 +25,7 @@ function themeScriptHash(): Promise<string> {
 // NB: /api/webhooks is intentionally NOT protected — third parties POST there
 // with no Supabase session; those routes authenticate via signature + token.
 const PROTECTED =
-  /^\/(dashboard|signals|context|onboarding|analytics|prompts|team|integrations|knowledge|settings|calendar|audit|trash)(\/|$)|^\/api\/(signals|assets|context|analytics|prompts|team|integrations|knowledge|schedule|social|audit|trash)(\/|$)/;
+  /^\/(dashboard|signals|context|onboarding|analytics|prompts|integrations|knowledge|settings|calendar|audit|trash)(\/|$)|^\/api\/(signals|assets|context|analytics|prompts|integrations|knowledge|schedule|social|audit|trash)(\/|$)/;
 
 /**
  * Per-request Content-Security-Policy. script-src uses a nonce + strict-dynamic

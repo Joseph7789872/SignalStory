@@ -168,11 +168,10 @@ e2e test asserts cache reuse on later same-tier agents.
 `@supabase/ssr`. `middleware.ts` refreshes the session and gates protected routes.
 `lib/auth.ts` `getOrCreateAuthContext()` is the key pattern: it reads the Supabase
 user and **lazily provisions a `User` + `Organization` (with empty context
-records) on first request** — there is no separate signup webhook. **Invite-aware:**
-if a `PENDING` `OrganizationInvite` matches the user's email, they join that org
-with the invited role instead of getting a new workspace (see `/team` + the team
-API; `requireOwner()` gates owner-only actions). Every API route calls
-`requireAuthContext()` and scopes all queries by `org.id`.
+records) on first request** — there is no separate signup webhook. Each sign-in
+provisions a fresh workspace with the user as `OWNER`; `requireOwner()` gates
+owner-only actions. Every API route calls `requireAuthContext()` and scopes all
+queries by `org.id`.
 
 **Context layer = the moat.** `Organization` has one each of
 `OrganizationProfile / FounderProfile / BrandVoice / EditorialStrategy`

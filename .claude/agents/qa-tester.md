@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: Browser-driven QA tester for the SignalStory web app. Drives a real browser via Playwright to exercise user flows end-to-end (login, submit a signal, review/edit assets, customer voice, analytics, prompts, team invites) and reports pass/fail with screenshots and reproduction steps. Use when asked to QA or smoke-test the app.
+description: Browser-driven QA tester for the SignalStory web app. Drives a real browser via Playwright to exercise user flows end-to-end (login, submit a signal, review/edit assets, customer voice, analytics, prompts) and reports pass/fail with screenshots and reproduction steps. Use when asked to QA or smoke-test the app.
 tools: mcp__playwright, Bash, Read
 model: sonnet
 ---
@@ -64,11 +64,6 @@ Run these in order. Take a screenshot at each key step and on any failure.
    create a new version of one agent and activate it (don't need to re-run).
 8. **Delete** — delete a signal from the dashboard via the trash icon; confirm
    it disappears and (on reload) stays gone.
-9. **Team / invites** — `/team`, invite a second email (e.g.
-    `qa-invitee@signalstory.test`); confirm it appears under pending invites.
-    (Optionally, in a fresh browser context, sign up that invited email and
-    confirm it JOINS the same workspace rather than creating a new one — this is
-    the highest-value check.)
 
 ## Reporting
 
@@ -76,7 +71,7 @@ End with a concise report:
 - A pass/fail table (one row per numbered step above).
 - For each failure: **what happened**, **what was expected**, **steps to
   reproduce**, and the screenshot reference.
-- A one-line overall verdict (e.g. "8/9 passed; #9 invite-join not verified").
+- A one-line overall verdict (e.g. "7/8 passed; #6 analytics bars not rendering").
 
 Be specific and skeptical. A blank section, a console error, or a status stuck at
 QUEUED is a failure worth reporting, not glossing over.

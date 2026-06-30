@@ -51,7 +51,7 @@ export default function PrivacyPage() {
             <p>
               We use your data to run the content pipeline, provide and improve the
               service, enforce usage limits, process payments, and communicate with
-              you (e.g. invites and &ldquo;content ready&rdquo; notifications). We do
+              you (e.g. &ldquo;content ready&rdquo; notifications). We do
               not sell your personal data.
             </p>
           </section>

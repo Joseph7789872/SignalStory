@@ -34,7 +34,6 @@ model Organization {
   founder   FounderProfile?
   brandVoice BrandVoice?
   editorial EditorialStrategy?
-  invites   OrganizationInvite[]
   integrations IntegrationConnection[]
   signals   Signal[]
   promptTemplates PromptTemplate[]
@@ -43,30 +42,6 @@ model Organization {
   scheduledPosts ScheduledPost[]
   socialAccounts SocialAccount[]
   auditLogs    AuditLog[]
-}
-
-enum InviteStatus {
-  PENDING
-  ACCEPTED
-  REVOKED
-}
-
-// V2: team invitations. Acceptance is implicit on the invitee's first sign-in
-// (matched by email in getOrCreateAuthContext) — no email-delivery service.
-model OrganizationInvite {
-  id        String       @id @default(cuid())
-  orgId     String
-  email     String
-  role      Role         @default(MEMBER)
-  status    InviteStatus @default(PENDING)
-  token     String       @unique @default(cuid())
-  expiresAt DateTime
-  createdAt DateTime     @default(now())
-
-  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-
-  @@index([email, status])
-  @@index([orgId])
 }
 
 enum Role {
