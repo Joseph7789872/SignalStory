@@ -4,7 +4,6 @@ import { Activity, ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LegalFooter } from "@/components/legal-footer";
-import { PricingTiers } from "@/components/marketing/pricing-tiers";
 import { SignalCanvas } from "@/components/marketing/signal-canvas";
 import { createClient } from "@/lib/supabase/server";
 
@@ -95,13 +94,6 @@ const FEATURES = [
     title: "Know what every draft costs",
     desc: "Per-run cost tracking and prompt versioning, so you can see exactly what you spend and which instructions produce the best content.",
   },
-] as const;
-
-const SHOTS = [
-  ["/marketing/dashboard.png", "Dashboard — your signals and their status"],
-  ["/marketing/signal-ready.png", "A finished signal with cited proof and ready assets"],
-  ["/marketing/knowledge.png", "Company Knowledge — the proof the pipeline cites"],
-  ["/marketing/analytics.png", "Per-agent cost and quality analytics"],
 ] as const;
 
 const FAQ = [
@@ -442,44 +434,6 @@ export default async function HomePage() {
                   </p>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Screenshots */}
-        <section className="border-t">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <h2 className="text-center text-3xl font-bold tracking-tight">
-              See it in action
-            </h2>
-            <div className="mt-12 grid gap-6 sm:grid-cols-2">
-              {SHOTS.map(([src, alt]) => (
-                <figure
-                  key={src}
-                  className="overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={alt} loading="lazy" className="w-full" />
-                  <figcaption className="border-t px-4 py-3 text-xs text-muted-foreground">
-                    {alt}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section className="border-t bg-muted/30">
-          <div className="mx-auto max-w-5xl px-6 py-20">
-            <h2 className="text-center text-3xl font-bold tracking-tight">
-              Simple, usage-based pricing
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-              Start free. Upgrade when you need more signals per month.
-            </p>
-            <div className="mt-12">
-              <PricingTiers />
             </div>
           </div>
         </section>
