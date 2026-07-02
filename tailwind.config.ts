@@ -27,6 +27,7 @@ const config: Config = {
         brand: {
           DEFAULT: "hsl(var(--brand))",
           foreground: "hsl(var(--brand-foreground))",
+          bright: "hsl(var(--brand-bright))",
         },
         navy: {
           DEFAULT: "hsl(var(--navy))",
@@ -35,6 +36,7 @@ const config: Config = {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          bright: "hsl(var(--success-bright))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
