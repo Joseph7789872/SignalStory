@@ -26,3 +26,11 @@ session.txt
 /docs/phase-2-last-mile-onboarding.md
 /docs/phase-3-publishing-analytics-enrichment-audit.md
 .env*
+# Local QA/debug artifacts (never commit — public repo)
+scratchpad-*.log
+/screenshots/
+/blog/
+.playwright-mcp/
+scripts/*.js
+scripts/try-passwords.ts
+/*.jpeg
