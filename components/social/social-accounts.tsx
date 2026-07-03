@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,9 +43,15 @@ export function SocialAccounts() {
 
   async function disconnect() {
     setBusy(true);
-    await fetch("/api/social?provider=LINKEDIN", { method: "DELETE" });
-    await load();
-    setBusy(false);
+    try {
+      await apiFetch("/api/social?provider=LINKEDIN", { method: "DELETE" });
+      toast.success("LinkedIn disconnected");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to disconnect LinkedIn");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

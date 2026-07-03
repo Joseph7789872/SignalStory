@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Plus, Radio, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,12 +48,16 @@ export function SignalList({ signals }: { signals: Row[] }) {
     )
       return;
     setBusyId(id);
-    const res = await fetch(`/api/signals/${id}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      await apiFetch(`/api/signals/${id}`, { method: "DELETE" });
       setRows((r) => r.filter((x) => x.id !== id));
+      toast.success("Signal moved to trash");
       router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete signal");
+    } finally {
+      setBusyId(null);
     }
-    setBusyId(null);
   }
 
   if (rows.length === 0) {

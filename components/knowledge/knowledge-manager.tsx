@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -105,9 +107,15 @@ export function KnowledgeManager() {
   async function remove(id: string) {
     if (!window.confirm("Delete this document and all its indexed chunks?")) return;
     setBusy(true);
-    await fetch(`/api/knowledge?id=${id}`, { method: "DELETE" });
-    await load();
-    setBusy(false);
+    try {
+      await apiFetch(`/api/knowledge?id=${id}`, { method: "DELETE" });
+      toast.success("Document deleted");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete document");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -160,33 +162,51 @@ export function IntegrationManager() {
 
   async function toggle(id: string, status: string) {
     setBusy(true);
-    await fetch("/api/integrations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status: status === "ACTIVE" ? "PAUSED" : "ACTIVE" }),
-    });
-    await load();
-    setBusy(false);
+    try {
+      await apiFetch("/api/integrations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: status === "ACTIVE" ? "PAUSED" : "ACTIVE" }),
+      });
+      toast.success(status === "ACTIVE" ? "Integration paused" : "Integration resumed");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update integration");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function remove(id: string) {
     if (!window.confirm("Disconnect this integration?")) return;
     setBusy(true);
-    await fetch(`/api/integrations?id=${id}`, { method: "DELETE" });
-    await load();
-    setBusy(false);
+    try {
+      await apiFetch(`/api/integrations?id=${id}`, { method: "DELETE" });
+      toast.success("Integration disconnected");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to disconnect");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function updateSecret(id: string, newSecret: string) {
     if (newSecret.length < 8) return;
     setBusy(true);
-    await fetch("/api/integrations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, secret: newSecret }),
-    });
-    await load();
-    setBusy(false);
+    try {
+      await apiFetch("/api/integrations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, secret: newSecret }),
+      });
+      toast.success("Signing secret updated");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update secret");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

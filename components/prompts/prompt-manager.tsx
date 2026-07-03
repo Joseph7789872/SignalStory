@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,33 +60,45 @@ function AgentCard({
 
   async function activate(v: string) {
     setBusy(true);
-    await fetch("/api/prompts", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent: block.agent, version: v }),
-    });
-    await onChange();
-    setBusy(false);
+    try {
+      await apiFetch("/api/prompts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent: block.agent, version: v }),
+      });
+      toast.success(`Activated version ${v}`);
+      await onChange();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to activate version");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!version.trim() || instruction.trim().length < 10) return;
     setBusy(true);
-    await fetch("/api/prompts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        agent: block.agent,
-        version: version.trim(),
-        instruction,
-        activate: true,
-      }),
-    });
-    setVersion("");
-    setOpen(false);
-    await onChange();
-    setBusy(false);
+    try {
+      await apiFetch("/api/prompts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent: block.agent,
+          version: version.trim(),
+          instruction,
+          activate: true,
+        }),
+      });
+      toast.success("Prompt version created");
+      setVersion("");
+      setOpen(false);
+      await onChange();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create version");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

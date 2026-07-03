@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarClock } from "lucide-react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,20 +62,32 @@ export default function CalendarPage() {
 
   async function patch(id: string, data: Record<string, unknown>) {
     setBusy(id);
-    await fetch("/api/schedule", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
-    });
-    await load();
-    setBusy(null);
+    try {
+      await apiFetch("/api/schedule", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...data }),
+      });
+      toast.success("Schedule updated");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update schedule");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function remove(id: string) {
     setBusy(id);
-    await fetch(`/api/schedule?id=${id}`, { method: "DELETE" });
-    await load();
-    setBusy(null);
+    try {
+      await apiFetch(`/api/schedule?id=${id}`, { method: "DELETE" });
+      toast.success("Scheduled post removed");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove post");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function reschedule(id: string) {

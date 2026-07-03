@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -150,17 +152,21 @@ export function ContextForm({ redirectTo }: { redirectTo?: string }) {
         topicsToAvoid: lines(f.topicsToAvoid),
       },
     };
-    const res = await fetch("/api/context", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
+    try {
+      const res = await apiFetch("/api/context", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const d = await res.json();
       setCompleteness(d.completeness ?? completeness);
+      toast.success("Context saved");
       if (redirectTo) router.push(redirectTo);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save context");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   if (!loaded) return <p className="text-muted-foreground">Loading…</p>;

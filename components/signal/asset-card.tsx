@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, ShieldCheck, X } from "lucide-react";
+import { toast } from "sonner";
+
+import { apiFetch } from "@/lib/api";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -351,35 +354,53 @@ export function AssetCard({
 
   async function review(decision: "APPROVE" | "REJECT") {
     setBusy(true);
-    await fetch(`/api/assets/${asset.id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
-    });
-    await onChange();
-    setBusy(false);
-    setDecided(true);
+    try {
+      await apiFetch(`/api/assets/${asset.id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      toast.success(decision === "APPROVE" ? "Asset approved" : "Asset rejected");
+      await onChange();
+      setDecided(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save decision");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveEdit(editedBody: unknown) {
     setBusy(true);
-    await fetch(`/api/assets/${asset.id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision: "EDIT", editedBody }),
-    });
-    await onChange();
-    setBusy(false);
-    setEditing(false);
-    setDecided(true);
+    try {
+      await apiFetch(`/api/assets/${asset.id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: "EDIT", editedBody }),
+      });
+      toast.success("Edit saved");
+      await onChange();
+      setEditing(false);
+      setDecided(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save edit");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function regenerate() {
     setBusy(true);
-    await fetch(`/api/assets/${asset.id}/regenerate`, { method: "POST" });
-    await onChange();
-    setBusy(false);
-    setDecided(true);
+    try {
+      await apiFetch(`/api/assets/${asset.id}/regenerate`, { method: "POST" });
+      toast.success("Asset regenerated");
+      await onChange();
+      setDecided(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to regenerate");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const slopVariant =
