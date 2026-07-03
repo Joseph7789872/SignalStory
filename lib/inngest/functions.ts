@@ -144,13 +144,30 @@ export const publishDuePostsFn = inngest.createFunction(
           channel: "LINKEDIN_FOUNDER",
           scheduledFor: { lte: now },
         },
-        include: { asset: { select: { body: true, editedBody: true } } },
+        include: {
+          asset: { select: { body: true, editedBody: true, reviewStatus: true } },
+        },
         take: 50,
       });
 
       let posted = 0;
       let failed = 0;
+      let held = 0;
       for (const post of due) {
+        // Human approval gate: never auto-publish an asset a person hasn't
+        // explicitly approved or edited — especially auto-ingested signals,
+        // whose content originates from external webhook payloads.
+        if (!["APPROVED", "EDITED"].includes(post.asset.reviewStatus)) {
+          held += 1;
+          await prisma.scheduledPost.update({
+            where: { id: post.id },
+            data: {
+              publishError:
+                "Held: asset must be approved (or edited) by a human before auto-publish",
+            },
+          });
+          continue;
+        }
         try {
           const account = await prisma.socialAccount.findUnique({
             where: { orgId_provider: { orgId: post.orgId, provider: "LINKEDIN" } },
@@ -209,7 +226,7 @@ export const publishDuePostsFn = inngest.createFunction(
           });
         }
       }
-      return { posted, failed, due: due.length };
+      return { posted, failed, held, due: due.length };
     });
   },
 );

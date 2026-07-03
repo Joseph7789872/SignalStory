@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const linesToArray = (s: string) =>
@@ -202,16 +203,28 @@ export function OnboardingWizard() {
     else await finish();
   }
 
-  async function finish() {
+  // If this POST fails, onboardedAt never gets set and the dashboard bounces
+  // right back to /onboarding — surface the failure instead of navigating.
+  async function markOnboarded() {
     setBusy(true);
-    await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
-    goToDashboard();
+    setError(null);
+    try {
+      await apiFetch("/api/onboarding", { method: "POST" });
+      goToDashboard();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Couldn't finish onboarding — try again.",
+      );
+      setBusy(false);
+    }
+  }
+
+  async function finish() {
+    await markOnboarded();
   }
 
   async function skip() {
-    setBusy(true);
-    await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
-    goToDashboard();
+    await markOnboarded();
   }
 
   // The dashboard soft-gate (redirect to /onboarding) is set just above by the
