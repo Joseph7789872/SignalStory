@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireAuthContext } from "@/lib/auth";
 import { rateLimit } from "@/lib/ratelimit";
+import { isOverSpendCap } from "@/lib/billing/quota";
 import { fetchUrlText } from "@/lib/knowledge/htmlToText";
 import { runCompanyEnricher } from "@/lib/agents/companyEnricher";
 import { logError } from "@/lib/log";
@@ -26,6 +27,15 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "Too many enrichment requests", retryAfter: rl.retryAfter },
       { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
+  }
+
+  // Spend-cap gate: enrichment makes an extraction-tier LLM call, so an org
+  // over its per-period spend cap must not be able to keep burning cost here.
+  if (await isOverSpendCap(ctx.org.id)) {
+    return NextResponse.json(
+      { error: "Spend cap reached for this billing period" },
+      { status: 402 },
     );
   }
 

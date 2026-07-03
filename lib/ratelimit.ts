@@ -28,20 +28,23 @@ function getRedis(): Redis | null {
   return redis;
 }
 
-export type LimiterName = "signals" | "webhook" | "enrich" | "knowledge";
+export type LimiterName = "signals" | "webhook" | "enrich" | "knowledge" | "regenerate";
 
 function getLimiter(name: LimiterName, r: Redis): Ratelimit {
   let lim = limiters.get(name);
   if (lim) return lim;
   // Sliding-window budgets. signals: per-org submissions; webhook: per-connection
-  // flood guard; enrich/knowledge: per-org URL-scrape + LLM/embeddings (expensive,
+  // flood guard; regenerate: per-org asset re-writes (two LLM calls each);
+  // enrich/knowledge: per-org URL-scrape + LLM/embeddings (expensive,
   // so keep them tight).
   const limiter =
     name === "signals"
       ? Ratelimit.slidingWindow(30, "1 h")
       : name === "webhook"
         ? Ratelimit.slidingWindow(120, "1 m")
-        : Ratelimit.slidingWindow(10, "1 h");
+        : name === "regenerate"
+          ? Ratelimit.slidingWindow(20, "1 h")
+          : Ratelimit.slidingWindow(10, "1 h");
   lim = new Ratelimit({ redis: r, limiter, prefix: `rl:${name}` });
   limiters.set(name, lim);
   return lim;

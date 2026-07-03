@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireAuthContext } from "@/lib/auth";
+import { rateLimit } from "@/lib/ratelimit";
+import { assertWithinQuota, QuotaExceededError } from "@/lib/billing/quota";
 import { buildContextBundle } from "@/lib/context/bundle";
 import { regenerateChannel } from "@/lib/agents/channelTransformer";
 import { runAntiSlopEditor } from "@/lib/agents/antiSlopEditor";
@@ -16,6 +18,30 @@ export async function POST(_req: Request, props: { params: Promise<{ id: string 
     ctx = await requireAuthContext();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Regenerate runs two LLM calls (writing + reasoning) — rate-limit per org
+  // (no-op unless Upstash is configured).
+  const rl = await rateLimit(`regenerate:${ctx.org.id}`, "regenerate");
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many regenerate requests", retryAfter: rl.retryAfter },
+      { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
+  }
+
+  // Hard block when over signal quota or the per-period spend cap — regenerate
+  // adds no signal count but does burn LLM spend.
+  try {
+    await assertWithinQuota(ctx.org.id);
+  } catch (e) {
+    if (e instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "Monthly quota reached", usage: e.usage },
+        { status: 402 },
+      );
+    }
+    throw e;
   }
 
   const asset = await prisma.contentAsset.findFirst({
