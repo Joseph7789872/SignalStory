@@ -528,6 +528,11 @@ export function AssetCard({
           </Button>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+              AI-generated draft — review for accuracy before approving.
+              You&apos;re responsible for anything you publish.
+            </p>
+
             <DeliveryBar
               assetId={asset.id}
               signalId={asset.signalId}
