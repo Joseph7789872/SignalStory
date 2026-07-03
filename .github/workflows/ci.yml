@@ -27,6 +27,9 @@ jobs:
       - name: Unit tests (offline)
         run: npm run test:unit
 
+      - name: Stripe webhook logic tests (offline)
+        run: npm run test:webhook
+
       - name: Typecheck
         run: npm run typecheck
 

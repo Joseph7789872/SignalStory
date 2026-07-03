@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "test": "tsx scripts/test-schemas.ts",
     "test:unit": "tsx scripts/test-unit.ts",
+    "test:webhook": "tsx scripts/test-webhook-stripe.ts",
     "test:isolation": "tsx scripts/test-isolation.ts",
     "test:e2e": "tsx scripts/test-pipeline.ts",
     "postinstall": "prisma generate"
