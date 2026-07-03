@@ -6,6 +6,7 @@ import { CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiFetch } from "@/lib/api";
+import { CHANNEL_LABEL } from "@/lib/content/channels";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,12 +24,6 @@ type Post = {
   autopublish: boolean;
   publishError: string | null;
   title: string;
-};
-
-const CHANNEL_LABEL: Record<string, string> = {
-  LINKEDIN_FOUNDER: "LinkedIn",
-  X_THREAD: "X thread",
-  BLOG_POST: "Blog post",
 };
 
 const STATUS_VARIANT: Record<string, "secondary" | "success" | "outline"> = {

@@ -8,12 +8,7 @@ import { publishText, refresh } from "@/lib/social/linkedin";
 import { toPlainText } from "@/lib/content/serialize";
 import { writeAudit } from "@/lib/audit";
 import { logError } from "@/lib/log";
-
-const CHANNEL_LABEL: Record<string, string> = {
-  LINKEDIN_FOUNDER: "LinkedIn",
-  X_THREAD: "X thread",
-  BLOG_POST: "Blog post",
-};
+import { CHANNEL_LABEL } from "@/lib/content/channels";
 
 /**
  * Durable pipeline runner. Each agent stage in `runPipeline` is wrapped in

@@ -52,6 +52,10 @@ const PRICING: Record<string, Pricing> = {
   "gpt-4.1-nano": { inputPerM: 0.1, outputPerM: 0.4 },
 };
 
+// Warn once per unknown model so an env-overridden model silently falling back
+// to the $5/$15 estimate (skewing the spend cap) is at least visible in logs.
+const warnedUnknownModels = new Set<string>();
+
 /** Cached/cache-read input tokens are billed at ~0.1x input rate. */
 export function estimateCostUsd(
   model: string,
@@ -60,6 +64,13 @@ export function estimateCostUsd(
   cachedTokens = 0,
 ): number {
   const p = PRICING[model] ?? { inputPerM: 5, outputPerM: 15 };
+  if (!PRICING[model] && !warnedUnknownModels.has(model)) {
+    warnedUnknownModels.add(model);
+    console.warn(
+      `[models] No pricing entry for "${model}" — cost estimates use the $5/$15 per-MTok fallback. ` +
+        "Add it to PRICING in lib/agents/models.ts to keep the spend cap accurate.",
+    );
+  }
   const freshInput = Math.max(0, inputTokens - cachedTokens);
   const cost =
     (freshInput / 1_000_000) * p.inputPerM +

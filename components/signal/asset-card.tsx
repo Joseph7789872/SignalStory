@@ -5,6 +5,7 @@ import { AlertTriangle, Check, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiFetch } from "@/lib/api";
+import { CHANNEL_LABEL_LONG } from "@/lib/content/channels";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +25,6 @@ import {
   type ChannelKey,
 } from "@/lib/content/serialize";
 import { downloadFile } from "@/lib/content/download";
-
-const CHANNEL_LABEL: Record<string, string> = {
-  LINKEDIN_FOUNDER: "LinkedIn — founder post",
-  X_THREAD: "X thread",
-  BLOG_POST: "Blog post",
-};
 
 const REVIEW_VARIANT: Record<
   string,
@@ -301,12 +296,14 @@ function DeliveryBar({
         <div className="flex flex-wrap items-end gap-2 rounded-md border p-2">
           <input
             type="datetime-local"
+            aria-label="Schedule date and time"
             value={when}
             onChange={(e) => setWhen(e.target.value)}
             className="rounded border px-2 py-1 text-sm"
           />
           <input
             type="text"
+            aria-label="Schedule note"
             placeholder="Note (optional)"
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -414,7 +411,7 @@ export function AssetCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          {CHANNEL_LABEL[asset.channel] ?? asset.channel}
+          {CHANNEL_LABEL_LONG[asset.channel] ?? asset.channel}
           {asset.antiSlopScore != null && (
             <Badge variant={slopVariant}>
               anti-slop {asset.antiSlopScore}/100

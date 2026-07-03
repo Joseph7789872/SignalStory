@@ -114,8 +114,8 @@ function AgentCard({
         {block.versions.length === 0 && (
           <p className="text-muted-foreground">
             No stored versions — using the in-code default ({block.defaultVersion}).
-            Run <code>npx tsx scripts/seed-prompts.ts</code> to import it, or create
-            a new version below.
+            Use <strong>New version</strong> below to customize this agent&apos;s
+            instructions.
           </p>
         )}
         {block.versions.map((v) => (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CHANNEL_LABEL } from "@/lib/content/channels";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Sparkline } from "@/components/analytics/sparkline";
@@ -80,12 +81,6 @@ type Funnel = {
   byChannel: { channel: string; generated: number; approved: number; scheduled: number; posted: number }[];
   qualityTrend: { key: string; avgAntiSlop: number; count: number }[];
   bucket: string;
-};
-
-const CHANNEL_LABEL: Record<string, string> = {
-  LINKEDIN_FOUNDER: "LinkedIn",
-  X_THREAD: "X thread",
-  BLOG_POST: "Blog post",
 };
 
 function ContentTab() {

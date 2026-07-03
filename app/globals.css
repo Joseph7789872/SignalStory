@@ -43,8 +43,10 @@
     --destructive-foreground: 0 0% 100%;
     --success: 160 84% 32%;
     --success-foreground: 0 0% 100%;
+    /* Amber badge surface with a dark navy foreground — white on 45%-lightness
+       amber was ~2.8:1 (fails WCAG AA). */
     --warning: 38 92% 45%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 222 47% 9%;
 
     --border: 214 32% 91%; /* #E2E8F0 */
     --input: 214 32% 91%;

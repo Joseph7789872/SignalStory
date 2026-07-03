@@ -1,11 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+// Component (not a plain helper) so useId is a legal hook call; threads the
+// generated id to the wrapped control for label association.
+function EditorField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactElement<{ id?: string }>;
+}) {
+  const id = React.useId();
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={id} className="text-xs">
+        {label}
+      </Label>
+      {React.cloneElement(children, { id })}
+    </div>
+  );
+}
 
 const linesToArray = (s: string) =>
   s
@@ -42,13 +62,8 @@ export function AssetEditor({
   );
   const set = (k: string, v: unknown) => setD((p: any) => ({ ...p, [k]: v }));
 
-  function field(label: string, node: React.ReactNode) {
-    return (
-      <div className="space-y-1">
-        <Label className="text-xs">{label}</Label>
-        {node}
-      </div>
-    );
+  function field(label: string, node: React.ReactElement<{ id?: string }>) {
+    return <EditorField label={label}>{node}</EditorField>;
   }
 
   let fields: React.ReactNode = null;

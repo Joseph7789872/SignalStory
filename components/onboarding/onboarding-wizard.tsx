@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
 
@@ -425,10 +425,11 @@ function Field({
   textarea?: boolean;
   rows?: number;
 }) {
+  const id = React.useId();
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label>{label}</Label>
+        <Label htmlFor={id}>{label}</Label>
         {example && onExample && (
           <button
             type="button"
@@ -441,13 +442,14 @@ function Field({
       </div>
       {textarea ? (
         <Textarea
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={example}
           rows={rows ?? 3}
         />
       ) : (
-        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={example} />
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={example} />
       )}
     </div>
   );

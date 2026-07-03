@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { apiFetch } from "@/lib/api";
@@ -34,8 +33,7 @@ const pairs = (s: string) =>
 const pairsText = (a: { name: string; value: string }[]) =>
   a.map((p) => `${p.name}: ${p.value}`).join("\n");
 
-export function ContextForm({ redirectTo }: { redirectTo?: string }) {
-  const router = useRouter();
+export function ContextForm() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [completeness, setCompleteness] = useState(0);
@@ -161,7 +159,6 @@ export function ContextForm({ redirectTo }: { redirectTo?: string }) {
       const d = await res.json();
       setCompleteness(d.completeness ?? completeness);
       toast.success("Context saved");
-      if (redirectTo) router.push(redirectTo);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save context");
     } finally {
@@ -269,7 +266,7 @@ export function ContextForm({ redirectTo }: { redirectTo?: string }) {
 
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={saving}>
-          {saving ? "Saving…" : redirectTo ? "Save & continue" : "Save context"}
+          {saving ? "Saving…" : "Save context"}
         </Button>
         <span className="text-sm text-muted-foreground">
           Context {completeness}% complete
@@ -284,12 +281,13 @@ function Field({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: React.ReactElement<{ id?: string }>;
 }) {
+  const id = React.useId();
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
+      <Label htmlFor={id}>{label}</Label>
+      {React.cloneElement(children, { id })}
     </div>
   );
 }

@@ -6,7 +6,7 @@ A multi-agent content pipeline where the writing model runs *last*, gated by an 
 
 > **The thesis:** AI content feels like AI because it starts with writing. Great content starts with *context*. So SignalStory inverts the usual "prompt → post" flow: it detects a signal, scores whether it even deserves content, finds the story, builds the narrative, writes per-channel, and only ships what survives an anti-slop review.
 
-Built with Next.js 14, TypeScript, a provider-agnostic LLM layer (OpenAI or Anthropic), Supabase, and Prisma.
+Built with Next.js 16, TypeScript, a provider-agnostic LLM layer (OpenAI or Anthropic), Supabase, and Prisma.
 
 ---
 
@@ -51,7 +51,7 @@ Two things make the output *not* read like GPT:
 
 | | |
 |---|---|
-| **Framework** | Next.js 14 (App Router), TypeScript (strict), React 18 |
+| **Framework** | Next.js 16 (App Router), TypeScript (strict), React 19 |
 | **Auth + DB** | Supabase (Postgres + Auth via `@supabase/ssr`), Prisma |
 | **LLM** | OpenAI **or** Anthropic — provider-agnostic, tier-based |
 | **UI** | Tailwind CSS + shadcn/ui (Radix) |
@@ -76,6 +76,16 @@ use `npx prisma migrate dev --name <change>` locally to create a migration and
 `npx prisma migrate deploy` in prod/CI. `npm run db:push` remains for throwaway
 local experiments only — never against a shared database.
 
+Optional finishing steps:
+
+```bash
+npx tsx scripts/seed-prompts.ts   # seed PromptTemplate rows from the in-code agent defaults (for the /prompts UI)
+npx inngest-cli@latest dev        # REQUIRED for local signal processing — run alongside `npm run dev`
+```
+
+> Embeddings (the V5 knowledge store) always use OpenAI (`text-embedding-3-small`),
+> so `OPENAI_API_KEY` is required even when `LLM_PROVIDER=anthropic`.
+
 Sign up → you're routed to `/onboarding` to fill the context layer → submit a signal at `/signals/new` and watch the pipeline run live.
 
 **Switching provider/model:** set `LLM_PROVIDER` (or leave it unset to infer from whichever key is present). Override any tier with `OPENAI_MODEL_REASONING`, `ANTHROPIC_MODEL_WRITING`, etc.
@@ -97,6 +107,14 @@ npm run test:e2e      # live: full pipeline twice — needs DB + an LLM key + mi
 `test:e2e` runs a **strong signal** (expects `READY` + 3 reviewed assets) and a **weak signal** (expects the significance gate to stop it at `REJECTED`), and reports per-run cost.
 
 ---
+
+## Deployment (Vercel)
+
+1. **Env vars** — everything in `.env.example`: Supabase URL/anon key, `DATABASE_URL` (pooled) + `DIRECT_URL` (direct), LLM key(s), `ENCRYPTION_KEY`, `UPSTASH_REDIS_REST_URL`/`TOKEN` (**required in production** — the server refuses to boot without them, see `instrumentation.ts`), Stripe keys + price IDs, Resend, Sentry DSN, `NEXT_PUBLIC_APP_URL`.
+2. **Database** — run `npx prisma migrate deploy` against prod (see Database & backups below; first-time adopters: `docs/prod-migration-runbook.md`).
+3. **Inngest** — connect the Vercel integration (or set `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY`); the durable functions are served at `/api/inngest`.
+4. **Stripe** — register a webhook for `checkout.session.completed` and `customer.subscription.*` pointing at `/api/stripe/webhook`, and set `STRIPE_WEBHOOK_SECRET` from it.
+5. **LinkedIn (optional)** — set the OAuth client ID/secret to enable auto-publish.
 
 ## Database & backups
 
@@ -132,6 +150,8 @@ scripts/            offline schema test + live e2e pipeline test
 
 **V4 (shipped):** CRM + universal connectors — native signed-inbound **Pipedrive**, **Attio**, and **Linear** connectors (deal won / record updated / issue shipped) plus a generic **Incoming Webhook (Zapier/Make)** adapter that authenticates with the URL token + a shared bearer secret, so any tool without a native connector (HubSpot, Salesforce, Gong, Slack, …) can pipe events in. Stripe was retired in favor of the lower-trust-ask CRM path; dedup is now per-connection. _Notion deferred — its sparse inbound payloads need Notion-API enrichment._
 
-**V5 (next):** Company Knowledge RAG (pgvector) · OAuth-native connectors · Notion API enrichment · LLM-driven prompt auto-tuning · publishing/scheduling.
+**V5 (shipped):** Company Knowledge RAG — a typed pgvector memory store (`MemoryDoc`/`MemoryChunk`, HNSW cosine index) ingested via paste-text or fetch-URL; the orchestrator retrieves cited proof per signal and the brief records which claims are grounded (`citedClaims`), rendered as a proof library on the signal page. Plus scheduling/calendar, LinkedIn auto-publish, and Stripe billing with per-plan quotas and hard spend caps.
+
+**Next:** OAuth-native connectors · Notion API enrichment · LLM-driven prompt auto-tuning.
 
 > The pipeline runs on a durable queue but the orchestrator stayed unchanged — each agent stage was already persisted and resumable-from-status, so the queue wrapped it via a small `StepRunner` seam rather than a rewrite.
