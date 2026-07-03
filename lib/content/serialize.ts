@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 
 import { buildBlogJsonLd } from "@/lib/seo/jsonld";
 import type { LinkedinFounder, XThread, BlogPost } from "@/lib/agents/schemas";
@@ -85,11 +86,34 @@ export function toMarkdown(channel: ChannelKey, body: unknown): string {
   return fm + md;
 }
 
+// Allowlist sanitizer for the marked output. The markdown source is
+// LLM-generated, user-editable, and (for auto-ingested signals) originates from
+// external webhook payloads — it must never reach dangerouslySetInnerHTML or
+// the HTML export unsanitized.
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "p", "br", "hr",
+    "ul", "ol", "li",
+    "blockquote",
+    "strong", "em", "b", "i", "del", "s",
+    "a", "code", "pre",
+    "table", "thead", "tbody", "tr", "th", "td",
+  ],
+  allowedAttributes: { a: ["href", "title"] },
+  // http/https/mailto only — blocks javascript: and data: hrefs.
+  allowedSchemes: ["http", "https", "mailto"],
+  disallowedTagsMode: "discard",
+};
+
 /** Standalone HTML (blog appends schema.org JSON-LD via buildBlogJsonLd). */
 export function toHtml(channel: ChannelKey, body: unknown): string {
-  const inner = marked.parse(markdownBody(channel, body), { async: false }) as string;
+  const raw = marked.parse(markdownBody(channel, body), { async: false }) as string;
+  const inner = sanitizeHtml(raw, SANITIZE_OPTIONS);
   if (channel !== "BLOG_POST") return inner;
-  const jsonLd = JSON.stringify(buildBlogJsonLd(bp(body)), null, 2);
+  // Escape "<" so a "</script>" inside seoTitle/bodyMarkdown can't break out of
+  // the JSON-LD script element.
+  const jsonLd = JSON.stringify(buildBlogJsonLd(bp(body)), null, 2).replace(/</g, "\\u003c");
   return `${inner}\n<script type="application/ld+json">\n${jsonLd}\n</script>`;
 }
 

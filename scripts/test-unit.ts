@@ -105,6 +105,27 @@ async function main() {
   check("blog filename uses slug", exportFilename("BLOG_POST", blog, "md") === "my-post.md");
   check("blog html embeds JSON-LD", toHtml("BLOG_POST", blog).includes("application/ld+json"));
 
+  // XSS hardening: toHtml output flows to dangerouslySetInnerHTML (print view)
+  // and the raw HTML export — hostile markdown must be neutralized.
+  const hostile = {
+    ...blog,
+    seoTitle: 'Break out </script><script>alert(2)</script>',
+    bodyMarkdown:
+      'Hi <img src=x onerror=alert(1)> <script>alert(1)</script> [x](javascript:alert(1)) [ok](https://example.com)',
+  };
+  const hostileHtml = toHtml("BLOG_POST", hostile);
+  // The JSON-LD tail legitimately carries the raw markdown as an inert,
+  // <-escaped JSON string — assert on the rendered-HTML portion only.
+  const hostileInner = hostileHtml.split('<script type="application/ld+json">')[0];
+  check("sanitize strips <script>", !/<script>alert/.test(hostileHtml));
+  check("sanitize strips event handlers", !/<[^>]*onerror/i.test(hostileInner));
+  check("sanitize strips javascript: hrefs", !hostileInner.includes('href="javascript:'));
+  check("sanitize keeps safe links", hostileInner.includes('href="https://example.com"'));
+  check(
+    "JSON-LD escapes </script> breakout",
+    !hostileHtml.includes("</script><script>alert(2)"),
+  );
+
   // --- lib/knowledge/chunk (edge cases) ---
   console.log("\nknowledge/chunk:");
   check("empty input → []", chunkText("").length === 0);
