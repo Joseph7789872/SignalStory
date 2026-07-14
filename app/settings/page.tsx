@@ -170,34 +170,43 @@ export default function SettingsPage() {
                   Only an owner can change the plan.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {data.plan !== "STARTER" && (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => billingAction({ action: "checkout", plan: "STARTER" })}
-                    >
-                      Get Starter
-                    </Button>
-                  )}
-                  {data.plan !== "PRO" && (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => billingAction({ action: "checkout", plan: "PRO" })}
-                    >
-                      Get Pro
-                    </Button>
-                  )}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Checkout only from FREE — an existing subscription must be
+                        changed via the Billing Portal (single sub, proration);
+                        the API enforces this too. */}
+                    {data.plan === "FREE" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => billingAction({ action: "checkout", plan: "STARTER" })}
+                        >
+                          Get Starter
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => billingAction({ action: "checkout", plan: "PRO" })}
+                        >
+                          Get Pro
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => billingAction({ action: "portal" })}
+                      >
+                        Manage billing
+                      </Button>
+                    )}
+                  </div>
                   {data.plan !== "FREE" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => billingAction({ action: "portal" })}
-                    >
-                      Manage billing
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Upgrade, downgrade, or cancel from the billing portal.
+                    </p>
                   )}
                 </div>
               )}

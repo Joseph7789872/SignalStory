@@ -22,9 +22,20 @@ function startOfMonthUtc(d = new Date()): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
+/**
+ * A lapsed subscription (status "canceled" — which mapStatus also assigns to
+ * Stripe's unpaid/incomplete_expired/paused) must not keep paid-tier limits,
+ * even if a stale `plan` value says otherwise (row written before the webhook
+ * downgrade fix, or a missed delivery).
+ */
+function effectivePlan(sub: { plan: string; status: string } | null) {
+  if (sub && sub.status === "canceled") return getPlan("FREE");
+  return getPlan(sub?.plan);
+}
+
 export async function getUsage(orgId: string): Promise<Usage> {
   const sub = await prisma.subscription.findUnique({ where: { orgId } });
-  const plan = getPlan(sub?.plan);
+  const plan = effectivePlan(sub);
 
   // Paid plans meter on the Stripe billing period; FREE/missing on calendar month.
   const onStripePeriod = plan.id !== "FREE" && sub?.currentPeriodStart;
@@ -106,7 +117,7 @@ export async function reserveSpend(
   estimateUsd: number,
 ): Promise<boolean> {
   const sub = await prisma.subscription.findUnique({ where: { orgId } });
-  const plan = getPlan(sub?.plan);
+  const plan = effectivePlan(sub);
   const onStripePeriod = plan.id !== "FREE" && sub?.currentPeriodStart;
   const periodStart = onStripePeriod ? sub!.currentPeriodStart : startOfMonthUtc();
   const cap = plan.hardSpendCapUsd;

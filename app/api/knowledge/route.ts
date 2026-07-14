@@ -14,6 +14,7 @@ import {
   estimateEmbeddingCostUsd,
 } from "@/lib/agents/embeddings";
 import { rateLimit } from "@/lib/ratelimit";
+import { isOverSpendCap } from "@/lib/billing/quota";
 import { writeAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,16 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "Too many requests", retryAfter: rl.retryAfter },
       { status: 429, headers: rl.retryAfter ? { "Retry-After": String(rl.retryAfter) } : undefined },
+    );
+  }
+
+  // Spend-cap gate: ingestion runs OpenAI embeddings, so an org over its
+  // per-period spend cap must not keep burning cost here (same gate as
+  // /api/context/enrich; the rate limiter alone is a no-op without Upstash).
+  if (await isOverSpendCap(ctx.org.id)) {
+    return NextResponse.json(
+      { error: "Spend cap reached for this billing period" },
+      { status: 402 },
     );
   }
 

@@ -28,14 +28,16 @@ export function mapStatus(stripeStatus: Stripe.Subscription.Status): string {
 }
 
 /**
- * Pure plan resolution: a canceled subscription always lands on FREE; otherwise
- * the price id decides (unknown price → FREE). Exported for the offline test.
+ * Pure plan resolution: any lapsed subscription (canceled, but also unpaid /
+ * incomplete_expired / paused — states Stripe parks a sub in indefinitely with
+ * no further webhook) lands on FREE; otherwise the price id decides (unknown
+ * price → FREE). Exported for the offline test.
  */
 export function resolvePlan(
   stripeStatus: Stripe.Subscription.Status,
   priceId: string | null | undefined,
 ): PlanId {
-  if (stripeStatus === "canceled") return "FREE";
+  if (mapStatus(stripeStatus) === "canceled") return "FREE";
   return planForPriceId(priceId) ?? "FREE";
 }
 

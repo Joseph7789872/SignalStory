@@ -45,6 +45,7 @@ type Signal = {
   id: string;
   status: string;
   statusReason: string | null;
+  createdAt: string;
   significanceScore: number | null;
   scoreDetail: any;
   storyAngles: any;
@@ -63,6 +64,9 @@ export default function SignalDetailPage(
   const params = use(props.params);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
+  // True once a QUEUED signal has sat unprocessed past the stall threshold —
+  // clock reads live in an interval (not render) to keep render pure.
+  const [stalledQueue, setStalledQueue] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/signals/${params.id}`, { cache: "no-store" });
@@ -83,6 +87,20 @@ export default function SignalDetailPage(
     const t = setInterval(load, 2500);
     return () => clearInterval(t);
   }, [signal, load]);
+
+  // Depend on the primitive fields (stable across polls) so the interval
+  // isn't torn down on every 2.5s signal refetch.
+  const status = signal?.status;
+  const createdAt = signal?.createdAt;
+  useEffect(() => {
+    if (status !== "QUEUED" || !createdAt) return;
+    const created = new Date(createdAt).getTime();
+    const t = setInterval(
+      () => setStalledQueue(Date.now() - created > 60_000),
+      5_000,
+    );
+    return () => clearInterval(t);
+  }, [status, createdAt]);
 
   if (loading) return <SignalSkeleton />;
   if (!signal)
@@ -135,15 +153,35 @@ export default function SignalDetailPage(
           <StatusBadge status={signal.status} />
         </div>
       </div>
-      {/* Running banner */}
-      {running && (
-        <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
-          <span className="text-muted-foreground">
-            Pipeline running — this view updates automatically.
-          </span>
-        </div>
-      )}
+      {/* Running banner. A signal that has sat in QUEUED for over a minute was
+          never picked up by the job queue (enqueue failed or the queue is down)
+          — polling forever with a spinner would hide that, so surface it. */}
+      {running &&
+        (signal.status === "QUEUED" && stalledQueue ? (
+          <Card className="border-warning/40 bg-warning/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                Taking longer than expected
+              </CardTitle>
+              <CardDescription className="text-foreground/70">
+                {/* statusReason for QUEUED carries a raw enqueue error for the
+                    operator — keep it out of the user-facing copy. */}
+                This signal is still waiting to be picked up for processing. It
+                normally starts within seconds — if this persists, the
+                processing queue may be down. Your signal is saved and will not
+                be lost; please check back shortly.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
+            <span className="text-muted-foreground">
+              Pipeline running — this view updates automatically.
+            </span>
+          </div>
+        ))}
       {/* Rejected */}
       {signal.status === "REJECTED" && (
         <Card className="border-warning/40 bg-warning/10">

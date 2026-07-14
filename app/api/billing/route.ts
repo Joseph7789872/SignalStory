@@ -107,7 +107,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ url: session.url });
     }
 
-    // checkout
+    // checkout — refuse if a live subscription already exists: a second
+    // Checkout Session would create a second concurrent Stripe subscription
+    // (double-billing). Plan changes go through the Billing Portal instead.
+    if (sub?.stripeSubscriptionId && sub.status !== "canceled") {
+      return NextResponse.json(
+        {
+          error:
+            "You already have an active subscription. Use “Manage billing” to change plans.",
+          code: "ALREADY_SUBSCRIBED",
+        },
+        { status: 409 },
+      );
+    }
+
     const planId = parsed.data.plan as PlanId;
     const priceId = PLANS[toPlanId(planId)].priceId;
     if (!priceId) {

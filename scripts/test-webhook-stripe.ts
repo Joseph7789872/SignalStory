@@ -61,6 +61,20 @@ async function main() {
     "canceled + pro price → FREE (cancel always wins)",
     resolvePlan("canceled", "price_test_pro") === "FREE",
   );
+  // Lapsed-but-not-canceled states park a sub indefinitely with no further
+  // webhook — they must not keep paid quota/spend caps.
+  check(
+    "unpaid + pro price → FREE",
+    resolvePlan("unpaid", "price_test_pro") === "FREE",
+  );
+  check(
+    "incomplete_expired + starter price → FREE",
+    resolvePlan("incomplete_expired", "price_test_starter") === "FREE",
+  );
+  check(
+    "paused + pro price → FREE",
+    resolvePlan("paused", "price_test_pro") === "FREE",
+  );
   check(
     "active + unknown price → FREE",
     resolvePlan("active", "price_unknown") === "FREE",
