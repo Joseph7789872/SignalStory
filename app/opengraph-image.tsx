@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 // for crawlers). Next renders this at /opengraph-image and auto-injects the
 // og:image + twitter:image tags site-wide.
 export const runtime = "edge";
-export const alt = "SignalStory — founder-quality content, context first";
+export const alt = "SignalStory: founder-quality content, context first";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
