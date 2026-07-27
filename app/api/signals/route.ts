@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       where: { id: signal.id },
       data: {
         statusReason:
-          "Queued but not yet picked up — is the job queue running? " +
+          "Queued but not yet picked up. Is the job queue running? " +
           (err instanceof Error ? err.message : String(err)),
       },
     });

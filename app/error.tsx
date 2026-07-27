@@ -30,8 +30,8 @@ export default function ErrorPage({
           <div>
             <p className="font-semibold">Something went wrong</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              An unexpected error occurred. It wasn&apos;t anything you did —
-              try again, or head back home.
+              An unexpected error occurred. It wasn&apos;t anything you did, so
+              try again or head back home.
             </p>
           </div>
           <div className="flex gap-2">

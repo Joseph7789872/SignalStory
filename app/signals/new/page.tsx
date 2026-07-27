@@ -76,7 +76,7 @@ export default function NewSignalPage() {
         </Link>
         <h1 className="mt-3 text-2xl font-bold tracking-tight">New signal</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Describe what happened. Be concrete — real numbers, names, and
+          Describe what happened. Be concrete. Real numbers, names, and
           specifics make the difference between a story and slop.
         </p>
       </div>

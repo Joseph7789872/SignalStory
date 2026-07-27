@@ -45,7 +45,7 @@ export default function PrivacyPage() {
                 add to the knowledge base (case studies, changelogs, transcripts,
                 posts) are stored, chunked, and embedded so the pipeline can cite
                 them. These may contain your intellectual property or personal
-                data about your customers — only submit what you have the right
+                data about your customers, so only submit what you have the right
                 to store. Knowledge documents are retained until you delete them
                 from the Knowledge page or purge your organization.
               </li>
@@ -106,8 +106,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Erasure:</strong> permanently delete your organization and
-                all of its data — signals, assets, context, knowledge store,
-                connections — from Settings (or <code>DELETE /api/account</code>).
+                all of its data (signals, assets, context, knowledge store,
+                connections) from Settings (or <code>DELETE /api/account</code>).
                 Deletion cascades to every child record.
               </li>
             </ul>

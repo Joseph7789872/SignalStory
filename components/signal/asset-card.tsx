@@ -245,7 +245,7 @@ function DeliveryBar({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? "Failed to schedule");
       }
-      setMsg("Scheduled — see the Calendar.");
+      setMsg("Scheduled. See the Calendar.");
       setScheduling(false);
       setWhen("");
       setNote("");
@@ -445,12 +445,12 @@ export function AssetCard({
               {detail.couldGptWriteThis ? (
                 <>
                   <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                  Anti-slop review — a generic model could write this
+                  Anti-slop review: a generic model could write this
                 </>
               ) : (
                 <>
                   <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                  Anti-slop review — requires proprietary context
+                  Anti-slop review: requires proprietary context
                 </>
               )}
             </p>
@@ -526,7 +526,7 @@ export function AssetCard({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              AI-generated draft — review for accuracy before approving.
+              AI-generated draft. Review for accuracy before approving.
               You&apos;re responsible for anything you publish.
             </p>
 

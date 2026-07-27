@@ -44,7 +44,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             Context first. Writing last.
           </h2>
           <p className="mt-3 text-sidebar-foreground">
-            Turn real company moments into founder-quality content — grounded in
+            Turn real company moments into founder-quality content, grounded in
             your context at every step.
           </p>
           <ul className="mt-8 space-y-5">

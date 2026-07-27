@@ -168,7 +168,7 @@ export default function SignalDetailPage(
                 {/* statusReason for QUEUED carries a raw enqueue error for the
                     operator — keep it out of the user-facing copy. */}
                 This signal is still waiting to be picked up for processing. It
-                normally starts within seconds — if this persists, the
+                normally starts within seconds. If this persists, the
                 processing queue may be down. Your signal is saved and will not
                 be lost; please check back shortly.
               </CardDescription>
@@ -178,7 +178,7 @@ export default function SignalDetailPage(
           <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
             <span className="text-muted-foreground">
-              Pipeline running — this view updates automatically.
+              Pipeline running. This view updates automatically.
             </span>
           </div>
         ))}
@@ -279,7 +279,7 @@ export default function SignalDetailPage(
               <Compass className="h-4 w-4 text-brand" />
               Story angles
             </CardTitle>
-            <CardDescription>Events aren’t content — stories are.</CardDescription>
+            <CardDescription>Events aren’t content. Stories are.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {angles.angles.map((a: any, i: number) => (

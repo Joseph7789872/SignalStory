@@ -60,7 +60,7 @@ export function SocialAccounts() {
         <CardTitle className="text-base">Publish to LinkedIn</CardTitle>
         <CardDescription>
           Connect LinkedIn to auto-publish scheduled founder posts at their
-          scheduled time — no manual copy-paste.
+          scheduled time, with no manual copy-paste.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">

@@ -53,7 +53,7 @@ export default function TermsPage() {
               </strong>{" "}
               of any generated output. You are solely responsible for reviewing,
               fact-checking, and editing output before use, and for anything you
-              choose to publish — including content published automatically via
+              choose to publish, including content published automatically via
               integrations you enable (e.g. scheduled LinkedIn auto-publish). Do
               not rely on generated output as professional (legal, financial,
               medical) advice.
@@ -121,7 +121,7 @@ export default function TermsPage() {
             <p>
               To the maximum extent permitted by law, we are not liable for
               indirect, incidental, special, consequential, or punitive damages, or
-              for lost profits, revenue, data, or goodwill — including damages
+              for lost profits, revenue, data, or goodwill, including damages
               arising from published AI-generated content. Our aggregate liability
               is limited to the amount you paid us in the twelve months before the
               claim.

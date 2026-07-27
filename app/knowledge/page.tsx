@@ -9,7 +9,7 @@ export default function KnowledgePage() {
       <PageHeader
         eyebrow="The moat"
         title="Company knowledge"
-        description="This is your company's memory — the more real proof you add, the more grounded and credible the generated content. Add case studies, changelogs, founder posts, call transcripts, and customer quotes so the pipeline can cite concrete evidence in every narrative brief."
+        description="This is your company's memory. The more real proof you add, the more grounded and credible the generated content. Add case studies, changelogs, founder posts, call transcripts, and customer quotes so the pipeline can cite concrete evidence in every narrative brief."
       />
       <KnowledgeManager />
     </div>

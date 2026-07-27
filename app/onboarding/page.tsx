@@ -16,7 +16,7 @@ export default function OnboardingPage() {
           </h1>
           <p className="mt-2 text-muted-foreground">
             SignalStory writes last. First, give it the context that makes
-            content sound like you — not like a model. Five quick steps; you can
+            content sound like you instead of like a model. Five quick steps; you can
             skip and refine anytime.
           </p>
         </div>

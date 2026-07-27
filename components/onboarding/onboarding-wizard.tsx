@@ -86,12 +86,12 @@ export function OnboardingWizard() {
         setPillars(s.pillars.map((p: { name: string; description: string }) => `${p.name}: ${p.description}`).join("\n"));
       if (Array.isArray(s.audiences))
         setAudiences(s.audiences.map((a: { name: string; description: string }) => `${a.name}: ${a.description}`).join("\n"));
-      setEnrichMsg("Pre-filled from your site — review and edit each step before saving.");
+      setEnrichMsg("Pre-filled from your site. Review and edit each step before saving.");
     } catch (e) {
       const aborted = e instanceof DOMException && e.name === "AbortError";
       setEnrichMsg(
         aborted
-          ? "That took too long — try again, or fill the steps in manually."
+          ? "That took too long. Try again, or fill the steps in manually."
           : e instanceof Error
             ? e.message
             : "Couldn't analyze that page",
@@ -213,7 +213,7 @@ export function OnboardingWizard() {
       goToDashboard();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Couldn't finish onboarding — try again.",
+        e instanceof Error ? e.message : "Couldn't finish onboarding. Try again.",
       );
       setBusy(false);
     }
@@ -291,7 +291,7 @@ export function OnboardingWizard() {
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>
-            Step {step + 1} of {STEPS.length} — {STEPS[step]}
+            Step {step + 1} of {STEPS.length}: {STEPS[step]}
           </span>
           <span>Context {completeness}% complete</span>
         </div>

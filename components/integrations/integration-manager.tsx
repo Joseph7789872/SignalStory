@@ -22,11 +22,11 @@ type Connection = {
 };
 
 const SECRET_HELP: Record<string, string> = {
-  PIPEDRIVE: 'Enter "username:password" — the same HTTP Auth username + password you set on the Pipedrive webhook',
+  PIPEDRIVE: 'Enter "username:password", the same HTTP Auth username + password you set on the Pipedrive webhook',
   ATTIO: "Attio → Workspace → Developers → your integration → Webhooks secret",
   LINEAR: "Linear → Settings → API → Webhooks → signing secret",
   GITHUB: "The secret you set when creating the GitHub webhook",
-  WEBHOOK: "A long random string you choose — you'll paste it into Zapier/Make too",
+  WEBHOOK: "A long random string you choose. You'll paste it into Zapier/Make too",
 };
 
 function CopyField({ value }: { value: string }) {
