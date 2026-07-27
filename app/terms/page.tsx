@@ -6,7 +6,7 @@ import { PublicHeader } from "@/components/marketing/public-header";
 // INTERNAL: Improved draft — counsel review still REQUIRED before launch.
 // Not user-facing; do not surface this note in the rendered page.
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Terms of Service — SignalStory" };
+export const metadata = { title: "Terms of Service" };
 
 const LAST_UPDATED = "June 25, 2026";
 

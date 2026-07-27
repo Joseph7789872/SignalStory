@@ -8,7 +8,7 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Analytics"
-        description="The economics and quality of the pipeline — spend per agent, cache reuse, the significance gate, and anti-slop pass rate."
+        description="The economics and quality of the pipeline: spend per agent, cache reuse, the significance gate, and anti-slop pass rate."
       />
       <AnalyticsDashboard />
     </div>
