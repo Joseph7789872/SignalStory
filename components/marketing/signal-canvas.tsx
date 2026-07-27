@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 // Noisy grey traces on the left resolve into one clean blue line on the
-// right — noise -> signal, the product thesis drawn rather than decorated.
+// right: noise -> signal, the product thesis drawn rather than decorated.
 const TRACES = [
   { hue: "rgba(124,140,165,0.35)", amp: 26, freq: 0.021, phase: 0.0, speed: 0.016 },
   { hue: "rgba(124,140,165,0.28)", amp: 34, freq: 0.014, phase: 2.1, speed: 0.011 },

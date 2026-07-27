@@ -27,31 +27,31 @@ const PROBLEMS = [
   {
     tag: "✕ UNGROUNDED",
     title: "No proof",
-    desc: "Claims without customer stories, numbers, or specifics read as filler — because they are. Your audience can tell.",
+    desc: "Claims with no customer story, number, or specific behind them read as filler. Your buyers notice.",
   },
   {
     tag: "✕ INTERCHANGEABLE",
     title: "Anyone could have posted it",
-    desc: "If a competitor could publish the same post by swapping the logo, it builds their category — not your company.",
+    desc: "If a competitor could publish the same post by swapping the logo, you are building the category for them.",
   },
 ] as const;
 
 const STEPS = [
   {
     title: "Capture the signal",
-    desc: "Submit wins by hand, or connect Pipedrive, Attio, Linear, and GitHub — deals, launches, and milestones flow in automatically. Anything else pipes in through Zapier or Make.",
+    desc: "Submit a win by hand, or connect Pipedrive, Attio, Linear, and GitHub so deals, launches, and milestones arrive on their own. Anything else can pipe in through Zapier or Make.",
   },
   {
     title: "Ground it in your company",
-    desc: "Every signal is matched against your founder's beliefs, brand voice, editorial strategy — and your knowledge library, cited so claims come with receipts.",
+    desc: "Each signal is matched against your founder's beliefs, brand voice, and editorial strategy, then checked against your knowledge library so claims can be cited.",
   },
   {
     title: "Think first, write last",
-    desc: "Five agents score, angle, and structure the story before a single writing agent turns the brief into channel-native drafts.",
+    desc: "Five agents score the signal, choose an angle, and structure the argument. Only then does a sixth agent write anything.",
   },
   {
-    title: "Review drafts with receipts",
-    desc: "Publish-ready LinkedIn, X, and blog drafts land in your dashboard with the proof behind every claim. Approve, tweak, or regenerate a single channel.",
+    title: "Review before you publish",
+    desc: "LinkedIn, X, and blog drafts land in your dashboard with the sources behind each claim. Approve them, edit them, or regenerate one channel on its own.",
   },
 ] as const;
 
@@ -67,40 +67,40 @@ const FEATURES = [
   {
     tag: "Integrations",
     title: "Your tools, connected once",
-    desc: "Native Pipedrive, Attio, Linear, and GitHub connections — plus a generic webhook for HubSpot, Salesforce, Gong, Slack, and anything Zapier or Make can reach.",
+    desc: "Native connections for Pipedrive, Attio, Linear, and GitHub, plus a generic webhook that covers HubSpot, Salesforce, Gong, Slack, and anything Zapier or Make can reach.",
   },
   {
     tag: "Knowledge library",
     title: "Content that cites its sources",
-    desc: "Paste in case studies, changelogs, and past posts. Drafts pull from them with citations, and every claim shows whether it's backed by a real source.",
+    desc: "Paste in case studies, changelogs, and past posts. Drafts pull from them with citations, and every claim shows whether a real source backs it.",
   },
   {
     tag: "Proof library",
-    title: "See the receipts",
-    desc: "Each draft ships with its evidence trail — which sources grounded it and which claims to double-check before you hit publish.",
+    title: "Every claim traced to a source",
+    desc: "Each draft carries its evidence trail: which sources grounded it, and which claims you should check yourself before publishing.",
   },
   {
     tag: "Channels",
-    title: "Native to every channel",
-    desc: "One brief becomes a hook-first LinkedIn post, a punchy X thread, and a long-form blog piece — restructured for each, never copy-pasted.",
+    title: "Written for each channel",
+    desc: "One brief becomes a LinkedIn post, an X thread, and a long-form blog piece. Each is restructured for its format rather than copy-pasted between them.",
   },
   {
     tag: "Rewrites",
-    title: "Regenerate one channel, not all three",
-    desc: "Don't like the thread? Rewrite just that channel from the same brief. The thinking is preserved — only the words re-run.",
+    title: "Regenerate a single channel",
+    desc: "If the thread misses, rewrite just that channel from the same brief. The thinking is preserved and only the writing runs again.",
   },
   {
     tag: "Analytics",
     title: "Know what every draft costs",
-    desc: "Per-run cost tracking and prompt versioning, so you can see exactly what you spend and which instructions produce the best content.",
+    desc: "Per-run cost tracking and prompt versioning show what you spend and which instructions produce the best drafts.",
   },
 ] as const;
 
 const FAQ = [
-  ["Why does this sound less like AI?", "Because it writes last. Every stage is grounded in your founder beliefs, brand voice, editorial strategy, and cited company knowledge before a single word is written — then an anti-slop editor gates the output."],
-  ["Do I have to write the content myself?", "No. You submit a short signal; the pipeline produces LinkedIn, X, and blog drafts you review, edit, copy, export, or schedule."],
-  ["What makes the output 'grounded'?", "A retrieval step pulls proof from your own knowledge store and the brief records which claims are backed by sources — ungrounded claims are flagged."],
-  ["Can I bring signals in automatically?", "Yes — connect Pipedrive, Attio, Linear, GitHub, or any tool via a generic webhook, and qualifying events become signals automatically."],
+  ["Why does the output sound less like AI?", "Because writing happens last. Every earlier stage is grounded in your founder's beliefs, brand voice, editorial strategy, and cited company knowledge. An anti-slop editor then gates whatever comes out of the writing step."],
+  ["Do I have to write the content myself?", "No. You submit a short signal, and the pipeline produces LinkedIn, X, and blog drafts you can review, edit, copy, export, or schedule."],
+  ["What makes the output 'grounded'?", "A retrieval step pulls proof from your own knowledge store, and the brief records which claims those sources actually support. Anything ungrounded is flagged for you."],
+  ["Can I bring signals in automatically?", "Yes. Connect Pipedrive, Attio, Linear, GitHub, or any tool through a generic webhook, and qualifying events become signals on their own."],
 ] as const;
 
 function Stage({
@@ -188,7 +188,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Sticky header — navy to match the hero */}
+      {/* Sticky header, navy to match the hero */}
       <header className="sticky top-0 z-40 border-b border-sidebar-border bg-navy/90 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2">
@@ -228,14 +228,13 @@ export default async function HomePage() {
               your founder could write.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl animate-fade-up text-lg leading-relaxed text-navy-foreground/70">
-              SignalStory watches your company&apos;s signals — closed deals,
-              shipped features, customer wins — and turns them into LinkedIn
-              posts, threads, and blog articles in your founder&apos;s actual
-              voice.{" "}
+              You submit a signal like a closed deal, a shipped feature, or a
+              customer win. SignalStory turns it into LinkedIn posts, X threads,
+              and blog drafts written in your founder&apos;s voice.{" "}
               <strong className="font-semibold text-navy-foreground">
                 Six agents think before one writes
               </strong>
-              , and nothing generic makes it past the anti-slop gate.
+              , and the anti-slop editor rejects anything generic.
             </p>
             <div className="mt-9 flex animate-fade-up justify-center">
               <Button asChild size="lg">
@@ -246,7 +245,7 @@ export default async function HomePage() {
               </Button>
             </div>
 
-            {/* Status strip — the pipeline's real statuses */}
+            {/* Status strip showing the pipeline's real statuses */}
             <div
               className="mt-12 flex flex-wrap items-center justify-center gap-2 font-mono text-[11px] tracking-wide"
               aria-label="Signal statuses"
@@ -274,7 +273,7 @@ export default async function HomePage() {
               The problem
             </span>
             <h2 className="mx-auto mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              AI content all sounds the same. Because it all starts the same
+              Most AI content sounds the same because it all starts the same
               way: writing.
             </h2>
             <div className="mt-10 grid gap-4 text-left sm:grid-cols-3">
@@ -292,24 +291,23 @@ export default async function HomePage() {
             </div>
             <div className="mx-auto mt-11 max-w-2xl rounded-xl border border-l-4 border-l-brand bg-card p-6 text-left shadow-sm">
               <p className="font-medium leading-relaxed">
-                SignalStory inverts the process:{" "}
-                <span className="text-brand">writing is the last step</span>,
-                not the first. Every draft is grounded in what your company
-                believes, says, and can prove — before a single sentence is
-                written.
+                SignalStory inverts that order:{" "}
+                <span className="text-brand">writing happens last</span>. Every
+                draft is grounded in what your company believes, says, and can
+                prove before the first sentence is written.
               </p>
             </div>
           </div>
         </section>
 
-        {/* How it works — 4 steps on navy */}
+        {/* How it works, 4 steps on navy */}
         <section className="bg-navy text-navy-foreground">
           <div className="mx-auto max-w-6xl px-6 py-20">
             <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-bright">
               How it works
             </span>
             <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              From signal to publish-ready in four moves.
+              From signal to publish-ready draft in four steps.
             </h2>
             <ol className="mt-11 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((step, i) => (
@@ -337,58 +335,57 @@ export default async function HomePage() {
               Under the hood
             </span>
             <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Six agents. Two quality gates. One writer.
+              Six agents run in order, and only the fifth one writes.
             </h2>
             <p className="mt-4 max-w-[60ch] text-muted-foreground">
-              Most tools ask one model to do everything at once. SignalStory
-              splits the job into specialists — and puts a gate before the
-              writing and a gate after it.
+              Most tools ask a single model to do the whole job in one pass.
+              SignalStory splits the work across specialists, with a quality
+              gate before the writing and another after it.
             </p>
 
             <div className="relative mt-12 pl-14 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-0.5 before:bg-border">
               <Stage n={1} name="Event Listener" tier="extraction">
-                Turns the raw signal into clean, verifiable facts — what
-                happened, who was involved, what can be proven.
+                Turns the raw signal into clean, verifiable facts: what
+                happened, who was involved, and what can be proven.
               </Stage>
               <Stage n={2} name="Significance Scorer" tier="reasoning">
-                Judges whether this signal deserves content at all, scored
+                Judges whether the signal deserves content at all, scored
                 against your editorial strategy.
               </Stage>
               <Gate
                 label="Gate 1 · Significance"
                 title="Not everything deserves a post."
-                desc="Weak signals are rejected here — with a note on what would change the verdict — instead of becoming forced, thin content."
+                desc="Weak signals are rejected here rather than padded into thin content, and the rejection comes with a note on what would change the verdict."
                 verdicts={[
                   ["significant → continues", "pass"],
                   ["weak → rejected, with reasons", "fail"],
                 ]}
               />
               <Stage n={3} name="Story Finder" tier="reasoning">
-                Generates competing story angles — the different lenses this
-                signal could be told through — and ranks them for
-                distinctiveness.
+                Generates competing angles for the same signal, then ranks them
+                by how distinctive each one is.
               </Stage>
               <Stage n={4} name="Narrative Strategist" tier="reasoning">
                 Commits to one angle and builds the brief: the argument, the
-                structure, and a ledger of claims — each marked supported or
-                unsupported by your knowledge library.
+                structure, and a ledger of claims. Each claim is marked
+                supported or unsupported by your knowledge library.
               </Stage>
               <Stage n={5} name="Channel Transformer" tier="writing" writes>
                 <strong className="text-foreground">
                   The first and only agent that writes prose.
                 </strong>{" "}
                 It turns the brief into a LinkedIn post, an X thread, and a
-                blog piece — each shaped for how that channel is actually read.
+                blog piece, each shaped for how that channel gets read.
               </Stage>
               <Stage n={6} name="Anti-Slop Editor" tier="reasoning">
-                The adversarial last line. It scores every draft on one brutal
-                question — <em>could a generic AI have written this without
-                your context?</em>
+                Scores every draft against one question:{" "}
+                <em>could a generic model have written this without your
+                context?</em>
               </Stage>
               <Gate
                 label="Gate 2 · Anti-slop"
                 title="Generic drafts don't ship."
-                desc="A failing draft gets exactly one rewrite with the editor's notes. Still generic? It's flagged for your attention instead of quietly published."
+                desc="A failing draft gets exactly one rewrite using the editor's notes. If it fails again, it is flagged for you instead of being published quietly."
                 verdicts={[
                   ["passes → ready for review", "pass"],
                   ["fails once → one rewrite", "retry"],
@@ -398,7 +395,7 @@ export default async function HomePage() {
               <div className="relative flex items-center">
                 <span className="absolute -left-12 h-6 w-6 rounded-full border-[3px] border-background bg-success shadow-[0_0_0_1px_hsl(var(--success)/0.3)]" />
                 <span className="font-mono text-[13px] font-bold tracking-wide text-success">
-                  READY — founder-quality drafts, waiting for your review
+                  READY: drafts waiting for your review
                 </span>
               </div>
             </div>
@@ -412,7 +409,7 @@ export default async function HomePage() {
               Features
             </span>
             <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything between the signal and the post.
+              What you get alongside the drafts.
             </h2>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map((f) => (
@@ -434,7 +431,7 @@ export default async function HomePage() {
         <section className="border-t">
           <div className="mx-auto max-w-3xl px-6 py-20">
             <h2 className="text-center text-3xl font-bold tracking-tight">
-              Frequently asked
+              Common questions
             </h2>
             <div className="mt-10 space-y-4">
               {FAQ.map(([q, a]) => (
@@ -459,12 +456,12 @@ export default async function HomePage() {
               Get started
             </span>
             <h2 className="mx-auto mt-3 max-w-[22ch] text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Stop publishing content anyone could have written.
+              Publish something only your company could have written.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-navy-foreground/70">
               Connect your tools, teach SignalStory your voice, and let the
-              pipeline turn what your company actually does into thought
-              leadership that sounds like you.
+              pipeline turn your company&apos;s real work into content that
+              sounds like you wrote it.
             </p>
             <div className="mt-8 flex justify-center">
               <Button asChild size="lg">
@@ -475,7 +472,7 @@ export default async function HomePage() {
               </Button>
             </div>
             <p className="mt-6 font-mono text-xs text-sidebar-muted">
-              6 agents · 2 gates · writes last
+              Free plan includes 5 signals a month.
             </p>
           </div>
         </section>
