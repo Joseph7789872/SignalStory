@@ -237,20 +237,12 @@ export default async function HomePage() {
               </strong>
               , and nothing generic makes it past the anti-slop gate.
             </p>
-            <div className="mt-9 flex animate-fade-up flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-9 flex animate-fade-up justify-center">
               <Button asChild size="lg">
                 <Link href="/sign-up">
                   Start free
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-sidebar-border bg-sidebar-accent/50 text-navy-foreground hover:bg-sidebar-accent hover:text-white"
-              >
-                <Link href="/pricing">See pricing</Link>
               </Button>
             </div>
 

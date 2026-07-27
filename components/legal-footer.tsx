@@ -1,12 +1,9 @@
 import Link from "next/link";
 
-/** Minimal public footer with pricing + legal links (used on unauthed pages). */
+/** Minimal public footer with legal links (used on unauthed pages). */
 export function LegalFooter() {
   return (
     <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t px-6 py-10 text-sm text-muted-foreground">
-      <Link href="/pricing" className="hover:text-foreground hover:underline">
-        Pricing
-      </Link>
       <Link href="/privacy" className="hover:text-foreground hover:underline">
         Privacy
       </Link>
