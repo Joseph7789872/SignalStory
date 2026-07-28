@@ -4,7 +4,8 @@ import { ImageResponse } from "next/og";
 // for crawlers). Next renders this at /opengraph-image and auto-injects the
 // og:image + twitter:image tags site-wide.
 export const runtime = "edge";
-export const alt = "SignalStory: founder-quality content, context first";
+export const alt =
+  "SignalStory: consistent, signal-driven content for B2B companies";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -50,11 +51,11 @@ export default function OpengraphImage() {
               lineHeight: 1.1,
             }}
           >
-            <span>Founder-quality content,</span>
-            <span>context first.</span>
+            <span>Consistent, signal-driven</span>
+            <span>content for B2B companies.</span>
           </div>
           <div style={{ display: "flex", color: "#A1A1AA", fontSize: "34px" }}>
-            Turn company signals into thought leadership. Writing comes last.
+            Your own signals in. Founder-quality drafts out. Writing comes last.
           </div>
         </div>
       </div>

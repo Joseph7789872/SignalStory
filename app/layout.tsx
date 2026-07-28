@@ -23,9 +23,10 @@ export const dynamic = "force-dynamic";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const DESCRIPTION =
-  "Turn company signals into founder-quality thought leadership. Context first, writing last.";
+  "Turn your company's own signals into consistent, founder-quality content. Context first, writing last.";
 /** Single source for the site title so the tab, OG card, and Twitter card can't drift apart. */
-export const SITE_TITLE = "SignalStory: founder-quality content, context first";
+export const SITE_TITLE =
+  "SignalStory: consistent, signal-driven content for B2B companies";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

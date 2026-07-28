@@ -20,14 +20,14 @@ const STATUSES = [
 
 const PROBLEMS = [
   {
-    tag: "✕ GENERIC",
-    title: "No point of view",
-    desc: "Prompt-to-post tools don't know what your founder believes, so they fill the gap with the average opinion of the internet.",
+    tag: "✕ INVISIBLE",
+    title: "The weeks you never post",
+    desc: "You know you should publish consistently. Between building and selling, a month goes by, the feed stays quiet, and nobody can picture what your company does.",
   },
   {
-    tag: "✕ UNGROUNDED",
-    title: "No proof",
-    desc: "Claims with no customer story, number, or specific behind them read as filler. Your buyers notice.",
+    tag: "✕ GENERIC",
+    title: "No point of view",
+    desc: "Prompt-to-post tools don't know what your team believes, so they fill the gap with the average opinion of the internet.",
   },
   {
     tag: "✕ INTERCHANGEABLE",
@@ -39,7 +39,7 @@ const PROBLEMS = [
 const STEPS = [
   {
     title: "Capture the signal",
-    desc: "Submit a win by hand, or connect Pipedrive, Attio, Linear, and GitHub so deals, launches, and milestones arrive on their own. Anything else can pipe in through Zapier or Make.",
+    desc: "Funding, a launch, a hire, a product milestone, a closed deal. Submit one by hand, or connect Pipedrive, Attio, Linear, and GitHub so they arrive on their own. Anything else pipes in through Zapier or Make.",
   },
   {
     title: "Ground it in your company",
@@ -50,8 +50,8 @@ const STEPS = [
     desc: "Five agents score the signal, choose an angle, and structure the argument. Only then does a sixth agent write anything.",
   },
   {
-    title: "Review before you publish",
-    desc: "LinkedIn, X, and blog drafts land in your dashboard with the sources behind each claim. Approve them, edit them, or regenerate one channel on its own.",
+    title: "Review, schedule, repeat",
+    desc: "LinkedIn, X, and blog drafts land in your dashboard with the sources behind each claim. Approve, edit, or regenerate one channel, then schedule it so the cadence holds through a busy week.",
   },
 ] as const;
 
@@ -85,22 +85,25 @@ const FEATURES = [
     desc: "One brief becomes a LinkedIn post, an X thread, and a long-form blog piece. Each is restructured for its format rather than copy-pasted between them.",
   },
   {
-    tag: "Rewrites",
-    title: "Regenerate a single channel",
-    desc: "If the thread misses, rewrite just that channel from the same brief. The thinking is preserved and only the writing runs again.",
+    tag: "Calendar",
+    title: "Scheduled, not sporadic",
+    desc: "Queue approved posts on a calendar and auto-publish to LinkedIn at the time you picked. The week you are heads-down building is the week the queue carries you.",
   },
   {
     tag: "Analytics",
-    title: "Know what every draft costs",
-    desc: "Per-run cost tracking and prompt versioning show what you spend and which instructions produce the best drafts.",
+    title: "The numbers behind the habit",
+    desc: "Follow drafts from generated to approved to posted, alongside anti-slop pass rate and cost per signal, so consistency is a number you watch rather than a feeling.",
   },
 ] as const;
 
 const FAQ = [
+  ["Will this get me more demos?", "Not on its own, and we won't pretend otherwise. Brand compounds over months, not per post, so any tool promising you demos per post is guessing. What SignalStory removes is the reason most teams go quiet, and what it shows you is the part it can actually measure: how many signals become published posts, how steady your cadence is, and what that costs. Inbound follows presence over time. It does not follow one post."],
   ["Why does the output sound less like AI?", "Because writing happens last. Every earlier stage is grounded in your founder's beliefs, brand voice, editorial strategy, and cited company knowledge. An anti-slop editor then gates whatever comes out of the writing step."],
+  ["How often should I be posting?", "Whatever cadence you can hold. SignalStory exists so the answer isn't zero: a signal you already have becomes drafts in minutes, and the calendar keeps approved posts going out on the weeks you're heads-down."],
   ["Do I have to write the content myself?", "No. You submit a short signal, and the pipeline produces LinkedIn, X, and blog drafts you can review, edit, copy, export, or schedule."],
   ["What makes the output 'grounded'?", "A retrieval step pulls proof from your own knowledge store, and the brief records which claims those sources actually support. Anything ungrounded is flagged for you."],
   ["Can I bring signals in automatically?", "Yes. Connect Pipedrive, Attio, Linear, GitHub, or any tool through a generic webhook, and qualifying events become signals on their own."],
+  ["Who is this for right now?", "SignalStory is pre-launch and onboarding a founding cohort of B2B teams. Early users shape what gets built next. We would rather show you real numbers from your own account in a couple of months than a wall of testimonials we invented."],
 ] as const;
 
 function Stage({
@@ -220,26 +223,34 @@ export default async function HomePage() {
         <section className="relative overflow-hidden bg-navy text-navy-foreground">
           <div className="mx-auto max-w-4xl px-6 pt-16 text-center sm:pt-24">
             <span className="animate-fade-up font-mono text-xs font-semibold uppercase tracking-[0.12em] text-brand-bright">
-              B2B thought leadership, grounded in your company
+              Consistent, signal-driven content for B2B companies
             </span>
             <h1 className="mx-auto mt-6 max-w-[20ch] animate-fade-up text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-6xl">
               Turn what your company{" "}
               <span className="text-brand-bright">does</span> into content only
-              your founder could write.
+              your team could write.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl animate-fade-up text-lg leading-relaxed text-navy-foreground/70">
-              You submit a signal like a closed deal, a shipped feature, or a
-              customer win. SignalStory turns it into LinkedIn posts, X threads,
-              and blog drafts written in your founder&apos;s voice.{" "}
+              SignalStory surfaces signals across your stack like a newly
+              shipped feature, a closed deal, or a client interview. It scores
+              these signals and turns the relevant ones into LinkedIn posts, X
+              threads, and blog drafts in your team&apos;s voice, so you keep
+              showing up while you build.{" "}
               <strong className="font-semibold text-navy-foreground">
                 Six agents think before one writes
               </strong>
               , and the anti-slop editor rejects anything generic.
             </p>
             <div className="mt-9 flex animate-fade-up justify-center">
-              <Button asChild size="lg">
+              {/* The label is long enough to overrun a 375px viewport, so it wraps
+                  below sm and only becomes a single fixed-height pill from sm up. */}
+              <Button
+                asChild
+                size="lg"
+                className="h-auto max-w-full whitespace-normal px-6 py-3 text-center sm:h-11 sm:whitespace-nowrap sm:px-8 sm:py-0"
+              >
                 <Link href="/sign-up">
-                  Start free
+                  Start building your presence for free now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -273,8 +284,8 @@ export default async function HomePage() {
               The problem
             </span>
             <h2 className="mx-auto mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Most AI content sounds the same because it all starts the same
-              way: writing.
+              The cost isn&apos;t a missed demo this week. It&apos;s a brand
+              nobody can picture six months from now.
             </h2>
             <div className="mt-10 grid gap-4 text-left sm:grid-cols-3">
               {PROBLEMS.map((p) => (
@@ -291,10 +302,12 @@ export default async function HomePage() {
             </div>
             <div className="mx-auto mt-11 max-w-2xl rounded-xl border border-l-4 border-l-brand bg-card p-6 text-left shadow-sm">
               <p className="font-medium leading-relaxed">
-                SignalStory inverts that order:{" "}
-                <span className="text-brand">writing happens last</span>. Every
-                draft is grounded in what your company believes, says, and can
-                prove before the first sentence is written.
+                Silence compounds the same way consistency does, just in the
+                wrong direction. SignalStory is built for the other side of
+                that: your own signals in,{" "}
+                <span className="text-brand">writing happens last</span>, and
+                every draft grounded in what your company believes, says, and
+                can prove before the first sentence exists.
               </p>
             </div>
           </div>
@@ -307,7 +320,7 @@ export default async function HomePage() {
               How it works
             </span>
             <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              From signal to publish-ready draft in four steps.
+              From signal to scheduled post in four steps.
             </h2>
             <ol className="mt-11 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((step, i) => (
@@ -453,20 +466,22 @@ export default async function HomePage() {
         <section className="border-t bg-navy text-navy-foreground">
           <div className="mx-auto max-w-3xl px-6 py-24 text-center">
             <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-bright">
-              Get started
+              Founding cohort
             </span>
             <h2 className="mx-auto mt-3 max-w-[22ch] text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Publish something only your company could have written.
+              Start showing up consistently, beginning with this week&apos;s
+              signal.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-navy-foreground/70">
-              Connect your tools, teach SignalStory your voice, and let the
-              pipeline turn your company&apos;s real work into content that
-              sounds like you wrote it.
+              SignalStory is pre-launch and onboarding its first teams, who get
+              a direct say in what gets built next. Connect your tools, teach it
+              your voice, and turn the work you are already doing into a
+              presence that compounds.
             </p>
             <div className="mt-8 flex justify-center">
               <Button asChild size="lg">
                 <Link href="/sign-up">
-                  Start free
+                  Start building your presence
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
