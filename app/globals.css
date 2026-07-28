@@ -120,8 +120,12 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  /* Tint the selection background only. Declaring a color here forced every
+     selection to the light-mode foreground, which turned white text (the navy
+     hero, the sidebar) black the moment it was highlighted. With no color
+     declared the browser keeps each element's own text color. */
   ::selection {
-    @apply bg-primary/20 text-foreground;
+    @apply bg-primary/20;
   }
 }
 
