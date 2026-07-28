@@ -250,7 +250,7 @@ export default async function HomePage() {
                 className="h-auto max-w-full whitespace-normal px-6 py-3 text-center sm:h-11 sm:whitespace-nowrap sm:px-8 sm:py-0"
               >
                 <Link href="/sign-up">
-                  Start building your presence for free now
+                  Start building your presence now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
