@@ -193,3 +193,33 @@ queries by `org.id`.
   during `next build` never requires API keys.
 - Model ids exist only in `lib/agents/models.ts`. Don't hardcode a model
   elsewhere.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `Joseph7789872/SignalStory`, driven via the `gh`
+CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See
+`docs/agents/domain.md`.
+
+## Parallel work
+
+Each ticket is built in its own isolated worktree. When starting work on a ticket,
+enter a fresh worktree (EnterWorktree) before making any changes. One ticket per
+worktree, one agent per worktree. Never work two tickets in the same worktree.
+
+## Commits
+
+Conventional commits. Every commit implementing a ticket must reference it in the
+message (for example "Closes #123"). The Spec axis of /mattpocock-skills:code-review
+locates the originating issue through these references, so a commit without one
+gets no spec review.
